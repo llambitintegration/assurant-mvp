@@ -141,7 +141,7 @@
     "chokidar": "^3.5.3",
     "concurrently": "^9.1.2",
     "cpx2": "^8.0.0",
-    "esbuild": "^0.17.19",
+    "esbuild": "^0.25.0",
     "esbuild-envfile-plugin": "^1.0.5",
     "esbuild-node-externals": "^1.8.0",
     "eslint": "^8.45.0",
