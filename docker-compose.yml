@@ -67,11 +67,19 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_DB: ${DB_NAME:-worklenz_db}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      PRESEED_ADMIN_USER: "TRUE"
+      ADMIN_USER: "admin@llambit.io"
+      ADMIN_PASSWORD: "Password123!"
+      # Note: $$ escapes $ in docker-compose (becomes single $ in container)
+      ADMIN_PASSWORD_HASH: "$$2b$$10$$EYoBPHYB/DqOegWf/L8OFuq/sIX83YukvzgMyJzAcXsO8oMUF0h.u"
+      ADMIN_NAME: "Admin User"
+      ADMIN_TEAM_NAME: "Your Company Team"
+      ADMIN_TIMEZONE: "America/New_York"
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -d ${DB_NAME:-worklenz_db} -U ${DB_USER:-postgres}",
+          "pg_isready -d ${DB_NAME:-worklenz_db} -U ${DB_USER:-postgres} && psql -U ${DB_USER:-postgres} -d ${DB_NAME:-worklenz_db} -c 'SELECT 1' > /dev/null 2>&1",
         ]
       interval: 10s
       timeout: 5s

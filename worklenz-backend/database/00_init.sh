@@ -11,6 +11,9 @@ BACKUP_DIR="/docker-entrypoint-initdb.d/pg_backups"
 #   PRESEED_ADMIN_USER   Enable preseed flow when set to "TRUE"
 #   ADMIN_USER           Email for the admin (default admin@default.com)
 #   ADMIN_PASSWORD       Password for the admin (default Password123!)
+#   ADMIN_PASSWORD_HASH  Pre-computed bcrypt hash (overrides ADMIN_PASSWORD if set)
+#                        Generate with: node worklenz-backend/scripts/generate-password-hash.js [password]
+#                        In docker-compose.yml, escape $ as $$ (e.g., $$2b$$10$$...)
 #   ADMIN_NAME           Display name override (default Default Admin)
 #   ADMIN_TEAM_NAME      Team name override (default Admin Team)
 #   ADMIN_TIMEZONE       Timezone override (default UTC)
@@ -27,31 +30,40 @@ preseed_admin_user() {
   local admin_name="${ADMIN_NAME:-Default Admin}"
   local admin_team_name="${ADMIN_TEAM_NAME:-Admin Team}"
   local admin_timezone="${ADMIN_TIMEZONE:-UTC}"
+  
+  # Use pre-computed hash if provided, otherwise use default hash for "Password123!"
+  # Default hash generated with Python bcrypt (should be compatible with Node.js bcrypt)
+  # To generate a new hash using the backend container:
+  #   docker exec worklenz_backend node -e "const bcrypt=require('bcrypt');bcrypt.hash('Password123!',10).then(h=>console.log(h));"
+  # Or locally: cd worklenz-backend && npm install && node scripts/generate-password-hash.js "Password123!"
+  # Then set ADMIN_PASSWORD_HASH environment variable in docker-compose.yml
+  local default_hash='$2b$10$EYoBPHYB/DqOegWf/L8OFuq/sIX83YukvzgMyJzAcXsO8oMUF0h.u'
+  local admin_password_hash="${ADMIN_PASSWORD_HASH:-$default_hash}"
 
-  if [[ -z "$admin_email" || -z "$admin_password" ]]; then
-    echo "⚠️ PRESEED_ADMIN_USER is TRUE but ADMIN_USER or ADMIN_PASSWORD is empty. Skipping admin preseed."
+  if [[ -z "$admin_email" ]]; then
+    echo "⚠️ PRESEED_ADMIN_USER is TRUE but ADMIN_USER is empty. Skipping admin preseed."
+    return
+  fi
+
+  if [[ -z "$admin_password_hash" ]]; then
+    echo "⚠️ PRESEED_ADMIN_USER is TRUE but ADMIN_PASSWORD_HASH is empty. Skipping admin preseed."
     return
   fi
 
   echo "👤 Ensuring admin user '$admin_email' exists..."
 
-  psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-    -v admin_email="$admin_email" \
-    -v admin_password="$admin_password" \
-    -v admin_name="$admin_name" \
-    -v admin_team_name="$admin_team_name" \
-    -v admin_timezone="$admin_timezone" <<'SQL'
-DO $$
+  psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<SQL
+DO \$\$
 DECLARE
-  _admin_email TEXT := :'admin_email';
-  _admin_password TEXT := :'admin_password';
-  _admin_name TEXT := COALESCE(NULLIF(TRIM(:'admin_name'), ''), 'Default Admin');
-  _admin_team_name TEXT := COALESCE(NULLIF(TRIM(:'admin_team_name'), ''), 'Admin Team');
-  _admin_timezone TEXT := COALESCE(NULLIF(TRIM(:'admin_timezone'), ''), 'UTC');
+  _admin_email TEXT := '$admin_email';
+  _admin_password_hash TEXT := '$admin_password_hash';
+  _admin_name TEXT := COALESCE(NULLIF(TRIM('$admin_name'), ''), 'Default Admin');
+  _admin_team_name TEXT := COALESCE(NULLIF(TRIM('$admin_team_name'), ''), 'Admin Team');
+  _admin_timezone TEXT := COALESCE(NULLIF(TRIM('$admin_timezone'), ''), 'UTC');
   _hashed_password TEXT;
   _team_name TEXT;
 BEGIN
-  _hashed_password := crypt(_admin_password, gen_salt('bf', 10));
+  _hashed_password := _admin_password_hash;
   _team_name := _admin_team_name;
 
   IF EXISTS (SELECT 1 FROM users WHERE email = _admin_email) THEN
@@ -79,7 +91,7 @@ BEGIN
     RAISE NOTICE 'Admin user % was created successfully.', _admin_email;
   END IF;
 END
-$$;
+\$\$;
 SQL
 
   echo "✅ Admin preseed finished."
