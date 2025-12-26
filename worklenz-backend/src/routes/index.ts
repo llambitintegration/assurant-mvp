@@ -6,6 +6,7 @@ const router = express.Router({strict: false});
 
 router.use(IndexController.use);
 
+router.get("/health", IndexController.getHealth);
 router.get("/", IndexController.worklenz);
 router.get("/pricing", IndexController.pricing);
 router.get("/privacy-policy", IndexController.privacyPolicy);

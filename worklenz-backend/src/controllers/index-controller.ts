@@ -99,4 +99,30 @@ export default class IndexController extends WorklenzControllerBase {
 
     return res.render("admin");
   }
+
+  public static async getHealth(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+    try {
+      const start = Date.now();
+      await db.query('SELECT 1');
+      const duration = Date.now() - start;
+
+      return res.status(200).json({
+        status: 'healthy',
+        database: {
+          connected: true,
+          responseTime: `${duration}ms`
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      return res.status(503).json({
+        status: 'unhealthy',
+        database: {
+          connected: false,
+          error: error.message
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
 }

@@ -21,9 +21,10 @@ services:
     container_name: worklenz_backend
     ports:
       - "3000:3000"
+    # Note: db dependency removed for Docker Compose V2 profile compatibility
+    # Backend will connect to either local 'db' service or cloud DB via DATABASE_URL
+    # The application's connection pool handles retries if local DB isn't ready yet
     depends_on:
-      db:
-        condition: service_healthy
       minio:
         condition: service_started
     restart: unless-stopped
@@ -60,7 +61,12 @@ services:
       - ./docker/createbuckets-entrypoint.sh:/scripts/createbuckets-entrypoint.sh:ro
     networks:
       - worklenz
+
+  # Database Profiles:
+  # - Run with local PostgreSQL: docker-compose --profile local up
+  # - Run with Neon DB (cloud): docker-compose up (no profile needed)
   db:
+    profiles: ["local"]  # Only starts when --profile local is specified
     image: postgres:15
     container_name: worklenz_db
     environment:
@@ -107,7 +113,9 @@ services:
         source: ./pg_backups
         target: /docker-entrypoint-initdb.d/pg_backups
     command: ["/usr/local/bin/db-init-wrapper.sh"]
+
   db-backup:
+    profiles: ["local"]  # Only runs when using local PostgreSQL (Neon has built-in backups)
     image: postgres:15
     container_name: worklenz_db_backup
     environment:

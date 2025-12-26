@@ -36,7 +36,9 @@
     "inline-queries": "node ./cli/inline-queries",
     "sonar": "sonar-scanner -Dproject.settings=sonar-project-dev.properties",
     "tsc": "tsc",
-    "test:watch": "jest --watch --setupFiles dotenv/config"
+    "test:watch": "jest --watch --setupFiles dotenv/config",
+    "db:init": "node scripts/init-database.js",
+    "db:init:dry-run": "node scripts/init-database.js --dry-run"
   },
   "jestSonar": {
     "reportPath": "coverage",

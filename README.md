@@ -222,16 +222,95 @@ When deploying to a remote server:
 
 ## Configuration
 
+### Database Setup
+
+Worklenz supports two database deployment options: **local PostgreSQL** (via Docker) and **cloud-hosted PostgreSQL** (like Neon DB). You can easily switch between them using Docker Compose profiles.
+
+#### Option 1: Local PostgreSQL (Default)
+
+Run Worklenz with a local PostgreSQL database using Docker Compose profiles:
+
+```bash
+# Start all services including local PostgreSQL database
+docker-compose --profile local up -d
+
+# Stop all services
+docker-compose --profile local down
+```
+
+**Configuration:**
+- Copy `.env.local.example` to `worklenz-backend/.env`
+- Uses individual database parameters (DB_USER, DB_PASSWORD, DB_HOST, etc.)
+- Database runs in a Docker container
+- Automatic backups run every 24 hours
+
+#### Option 2: Neon DB (Cloud PostgreSQL)
+
+Run Worklenz with a cloud-hosted Neon database:
+
+**Prerequisites:**
+1. Create a free account at [neon.tech](https://neon.tech)
+2. Create a new project in the Neon dashboard
+3. Copy your connection string (format: `postgresql://user:pass@host.neon.tech/db?sslmode=require`)
+
+**Setup:**
+
+```bash
+# 1. Configure environment
+cp .env.neon.example worklenz-backend/.env
+
+# 2. Edit worklenz-backend/.env and set your Neon connection string:
+#    DATABASE_URL=postgresql://your-user:your-pass@ep-xxx.region.neon.tech/your-db?sslmode=require
+#    DB_SSL_MODE=require
+
+# 3. Initialize the Neon database schema
+cd worklenz-backend
+npm install
+npm run db:init
+
+# 4. Start services (WITHOUT local database)
+cd ..
+docker-compose up -d
+
+# 5. Verify database connectivity
+curl http://localhost:3000/health
+```
+
+**Benefits of Neon DB:**
+- No local database container needed
+- Built-in backups and point-in-time recovery
+- Database branching for development
+- Automatic scaling
+- Lower for Neon free tier)
+
+**Switching Between Modes:**
+
+To switch from local to Neon:
+```bash
+docker-compose --profile local down  # Stop local DB
+cp .env.neon.example worklenz-backend/.env  # Switch config
+npm run db:init  # Initialize Neon DB
+docker-compose up -d  # Start without local DB
+```
+
+To switch from Neon to local:
+```bash
+docker-compose down  # Stop services
+cp .env.local.example worklenz-backend/.env  # Switch config
+docker-compose --profile local up -d  # Start with local DB
+```
+
 ### Environment Variables
 
 Worklenz requires several environment variables to be configured for proper operation. These include:
 
-- Database credentials
+- Database credentials (or DATABASE_URL for cloud databases)
+- SSL configuration (DB_SSL_MODE)
 - Session secrets
 - Storage configuration (S3 or Azure)
 - Authentication settings
 
-Please refer to the `.env.example` files for a full list of required variables.
+Please refer to the `.env.template`, `.env.local.example`, and `.env.neon.example` files for a full list of required variables.
 
 The Docker setup uses environment variables to configure the services:
 
@@ -240,11 +319,32 @@ The Docker setup uses environment variables to configure the services:
   - `VITE_SOCKET_URL`: WebSocket URL for real-time communication (default: ws://backend:3000)
 
 - **Backend:**
-  - Database connection parameters
+  - Database connection parameters (or DATABASE_URL for connection string)
+  - SSL mode configuration (disable, require, verify-ca, verify-full)
   - Storage configuration
   - Other backend settings
 
 For custom configuration, edit the `.env` file or the `update-docker-env.sh` script.
+
+### Health Check
+
+Monitor your application and database connectivity using the health endpoint:
+
+```bash
+curl http://localhost:3000/health
+```
+
+Response (healthy):
+```json
+{
+  "status": "healthy",
+  "database": {
+    "connected": true,
+    "responseTime": "10ms"
+  },
+  "timestamp": "2025-01-15T10:30:00.000Z"
+}
+```
 
 ## MinIO Integration
 
