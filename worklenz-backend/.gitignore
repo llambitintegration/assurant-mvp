@@ -5,6 +5,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# PII / Customer Data - DO NOT COMMIT
+# Contains migration data with employee names, emails, hourly allocations
+# See context/README.md for details
+context/
+
 # Runtime data
 pids
 *.pid
