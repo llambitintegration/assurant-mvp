@@ -35,7 +35,21 @@ All environment variables are configured as Replit secrets. Key variables includ
 - Native modules (bcrypt, sharp) are rebuilt during setup
 - Segfault handler is optional and fails gracefully if not available
 
+## Login Credentials
+- **Email**: admin@llambit.io
+- **Password**: Password123!
+
+## API Proxy Configuration
+The frontend uses Vite's proxy feature to route API requests to the backend:
+- `/secure/*` → Backend (authentication endpoints)
+- `/api/*` → Backend (API endpoints)
+- `/socket/*` → Backend (WebSocket connections)
+- `/csrf-token` → Backend (CSRF token endpoint)
+
 ## Recent Changes
+- Configured Vite proxy to route API calls from frontend to backend
+- Set API base URL to empty string to use relative URLs with proxy
+- Reset admin user password to Password123!
 - Configured Vite to run on port 5000 with allowedHosts enabled
 - Made segfault-handler optional to avoid native module issues
 - Excluded data-migration utilities from TypeScript compilation
