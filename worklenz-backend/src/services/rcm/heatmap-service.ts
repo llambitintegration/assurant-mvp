@@ -166,7 +166,7 @@ export async function getHeatmapData(
 /**
  * Generate time periods based on granularity
  */
-function generateTimePeriods(
+export function generateTimePeriods(
   startDate: Date,
   endDate: Date,
   granularity: 'daily' | 'weekly' | 'monthly'
@@ -213,7 +213,7 @@ function generateTimePeriods(
 /**
  * Get allocations for a resource in a date range
  */
-async function getResourceAllocations(
+export async function getResourceAllocations(
   resourceId: string,
   startDate: Date,
   endDate: Date,
@@ -258,7 +258,7 @@ async function getResourceAllocations(
 /**
  * Get availability records for a resource
  */
-async function getResourceAvailability(resourceId: string): Promise<any[]> {
+export async function getResourceAvailability(resourceId: string): Promise<any[]> {
   const availability = await prisma.rcm_availability.findMany({
     where: {
       resource_id: resourceId
@@ -274,7 +274,7 @@ async function getResourceAvailability(resourceId: string): Promise<any[]> {
 /**
  * Get unavailability periods for a resource
  */
-async function getResourceUnavailability(
+export async function getResourceUnavailability(
   resourceId: string,
   startDate: Date,
   endDate: Date
@@ -299,7 +299,7 @@ async function getResourceUnavailability(
 /**
  * Calculate utilization for a specific time period
  */
-function calculateUtilizationForPeriod(
+export function calculateUtilizationForPeriod(
   period: ITimePeriod,
   allocations: any[],
   availabilityRecords: any[],
@@ -330,7 +330,7 @@ function calculateUtilizationForPeriod(
   if (availabilityRecords.length > 0) {
     // Use the most recent availability record
     const latestAvailability = availabilityRecords[availabilityRecords.length - 1];
-    weeklyHours = Number(latestAvailability.hours_per_week);
+    weeklyHours = Number(latestAvailability.total_hours_per_week);
   }
 
   const grossHoursAvailable = (weeklyHours / 7) * periodDays;
@@ -390,7 +390,7 @@ function calculateUtilizationForPeriod(
 /**
  * Get utilization status based on percentage
  */
-function getUtilizationStatus(utilizationPercent: number): 'OVERUTILIZED' | 'OPTIMAL' | 'AVERAGE' | 'UNDERUTILIZED' | 'AVAILABLE' {
+export function getUtilizationStatus(utilizationPercent: number): 'OVERUTILIZED' | 'OPTIMAL' | 'AVERAGE' | 'UNDERUTILIZED' | 'AVAILABLE' {
   if (utilizationPercent >= 100) return 'OVERUTILIZED';
   if (utilizationPercent >= 80) return 'OPTIMAL';
   if (utilizationPercent >= 60) return 'AVERAGE';
@@ -401,7 +401,7 @@ function getUtilizationStatus(utilizationPercent: number): 'OVERUTILIZED' | 'OPT
 /**
  * Calculate the number of days between two dates
  */
-function calculateDaysBetween(start: Date, end: Date): number {
+export function calculateDaysBetween(start: Date, end: Date): number {
   const msPerDay = 1000 * 60 * 60 * 24;
   const diffMs = end.getTime() - start.getTime();
   return diffMs / msPerDay;
