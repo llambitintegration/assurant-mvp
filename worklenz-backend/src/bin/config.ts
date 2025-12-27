@@ -1,6 +1,11 @@
 import dotenv from "dotenv";
-import SegfaultHandler from "segfault-handler";
 
 dotenv.config();
 global.Promise = require("bluebird");
-SegfaultHandler.registerHandler("crash.log");
+
+try {
+  const SegfaultHandler = require("segfault-handler");
+  SegfaultHandler.registerHandler("crash.log");
+} catch (e) {
+  // Segfault handler is optional - not available on all platforms
+}
