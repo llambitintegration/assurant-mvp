@@ -40,6 +40,25 @@ export default defineConfig(({ command, mode }) => {
         overlay: false,
       },
       allowedHosts: true,
+      proxy: {
+        '/secure': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+        },
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+        },
+        '/socket': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          ws: true,
+        },
+        '/csrf-token': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+        },
+      },
     },
 
     // **Build**

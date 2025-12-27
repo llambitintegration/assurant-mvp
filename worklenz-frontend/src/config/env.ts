@@ -23,8 +23,8 @@ export const getApiUrl = (): string => {
     return import.meta.env.VITE_API_URL;
   }
 
-  // Default for development
-  return 'http://localhost:3000';
+  // Default for development - use empty string for relative URLs (Vite proxy handles routing)
+  return '';
 };
 
 export const getSocketUrl = (): string => {
@@ -46,8 +46,8 @@ export const getSocketUrl = (): string => {
     return apiUrl.replace('http://', 'ws://');
   }
 
-  // Final fallback
-  return 'ws://localhost:3000';
+  // Final fallback - use empty string for relative URLs (Vite proxy handles routing)
+  return '';
 };
 
 export default {
