@@ -4,7 +4,8 @@
   ],
   "exclude": [
     "node_modules",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "src/utils/data-migration"
   ],
   "compilerOptions": {
     "target": "ES2022",
