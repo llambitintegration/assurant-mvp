@@ -42,7 +42,20 @@ module.exports = {
   // ],
 
   // An object that configures minimum threshold enforcement for coverage results
-  // coverageThreshold: undefined,
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 85,
+      lines: 85,
+      statements: 85
+    },
+    './src/services/rcm/heatmap-service.ts': {
+      branches: 90,
+      functions: 100,
+      lines: 100,
+      statements: 100
+    }
+  },
 
   // A path to a custom dependency extractor
   // dependencyExtractor: undefined,
