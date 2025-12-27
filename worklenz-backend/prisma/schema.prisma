@@ -1,0 +1,247 @@
+// Prisma schema for Resource Capacity Management (RCM) extension
+// This schema defines RCM-specific tables while referencing existing Worklenz tables
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum rcm_resource_type {
+  personnel
+  equipment
+}
+
+enum rcm_proficiency_level {
+  beginner
+  intermediate
+  advanced
+  expert
+}
+
+enum rcm_unavailability_type {
+  vacation
+  sick_leave
+  holiday
+  training
+  maintenance
+  other
+}
+
+// ============================================================================
+// REFERENCED WORKLENZ TABLES (with @@ignore)
+// ============================================================================
+
+model users {
+  id         String   @id @db.Uuid
+  email      String
+  name       String?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@ignore
+}
+
+model teams {
+  id         String   @id @db.Uuid
+  name       String
+  user_id    String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@ignore
+}
+
+model projects {
+  id         String   @id @db.Uuid
+  name       String
+  team_id    String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@ignore
+}
+
+// ============================================================================
+// RCM CORE TABLES
+// ============================================================================
+
+model rcm_resources {
+  id               String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resource_type    rcm_resource_type
+
+  // Personnel-specific fields
+  first_name       String?            @db.VarChar(100)
+  last_name        String?            @db.VarChar(100)
+  email            String?            @db.VarChar(255)
+  phone            String?            @db.VarChar(50)
+  employee_id      String?            @db.VarChar(50)
+
+  // Equipment-specific fields
+  equipment_name   String?            @db.VarChar(200)
+  model            String?            @db.VarChar(100)
+  serial_number    String?            @db.VarChar(100)
+
+  // Common fields
+  team_id          String             @db.Uuid
+  created_by       String             @db.Uuid
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active        Boolean            @default(true)
+  notes            String?            @db.Text
+
+  // Relations
+  resource_skills               rcm_resource_skills[]
+  department_assignments        rcm_resource_department_assignments[]
+  availability                  rcm_availability[]
+  unavailability_periods        rcm_unavailability_periods[]
+  allocations                   rcm_allocations[]
+
+  @@index([team_id])
+  @@index([resource_type])
+  @@index([is_active])
+  @@index([email])
+}
+
+model rcm_departments {
+  id             String                              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name           String                              @db.VarChar(200)
+  description    String?                             @db.Text
+  parent_dept_id String?                             @db.Uuid
+  team_id        String                              @db.Uuid
+  created_by     String                              @db.Uuid
+  created_at     DateTime                            @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime                            @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active      Boolean                             @default(true)
+
+  // Relations
+  resource_assignments rcm_resource_department_assignments[]
+  parent_department    rcm_departments?                    @relation("DepartmentHierarchy", fields: [parent_dept_id], references: [id], onDelete: Cascade)
+  child_departments    rcm_departments[]                   @relation("DepartmentHierarchy")
+
+  @@index([team_id])
+  @@index([parent_dept_id])
+  @@index([is_active])
+}
+
+model rcm_resource_department_assignments {
+  id            String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resource_id   String           @db.Uuid
+  department_id String           @db.Uuid
+  is_primary    Boolean          @default(false)
+  assigned_at   DateTime         @default(now()) @db.Timestamptz(6)
+  assigned_by   String           @db.Uuid
+
+  // Relations
+  resource   rcm_resources   @relation(fields: [resource_id], references: [id], onDelete: Cascade)
+  department rcm_departments @relation(fields: [department_id], references: [id], onDelete: Cascade)
+
+  @@unique([resource_id, department_id])
+  @@index([resource_id])
+  @@index([department_id])
+}
+
+model rcm_skills {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  category    String?  @db.VarChar(100)
+  team_id     String   @db.Uuid
+  created_by  String   @db.Uuid
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active   Boolean  @default(true)
+
+  // Relations
+  resource_skills rcm_resource_skills[]
+
+  @@index([team_id])
+  @@index([category])
+  @@index([is_active])
+}
+
+model rcm_resource_skills {
+  id              String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resource_id     String                 @db.Uuid
+  skill_id        String                 @db.Uuid
+  proficiency     rcm_proficiency_level
+  years_experience Int?
+  assigned_at     DateTime               @default(now()) @db.Timestamptz(6)
+  assigned_by     String                 @db.Uuid
+
+  // Relations
+  resource rcm_resources @relation(fields: [resource_id], references: [id], onDelete: Cascade)
+  skill    rcm_skills    @relation(fields: [skill_id], references: [id], onDelete: Cascade)
+
+  @@unique([resource_id, skill_id])
+  @@index([resource_id])
+  @@index([skill_id])
+  @@index([proficiency])
+}
+
+model rcm_availability {
+  id                    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resource_id           String   @db.Uuid
+  effective_from        DateTime @db.Date
+  effective_to          DateTime? @db.Date
+  hours_per_day         Decimal  @db.Decimal(5, 2)
+  days_per_week         Decimal  @db.Decimal(3, 1)
+  total_hours_per_week  Decimal  @db.Decimal(5, 2)
+  created_by            String   @db.Uuid
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  resource rcm_resources @relation(fields: [resource_id], references: [id], onDelete: Cascade)
+
+  @@index([resource_id])
+  @@index([effective_from])
+  @@index([effective_to])
+}
+
+model rcm_unavailability_periods {
+  id                String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resource_id       String                   @db.Uuid
+  unavailability_type rcm_unavailability_type
+  start_date        DateTime                 @db.Date
+  end_date          DateTime                 @db.Date
+  description       String?                  @db.Text
+  created_by        String                   @db.Uuid
+  created_at        DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime                 @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  resource rcm_resources @relation(fields: [resource_id], references: [id], onDelete: Cascade)
+
+  @@index([resource_id])
+  @@index([start_date])
+  @@index([end_date])
+  @@index([unavailability_type])
+}
+
+model rcm_allocations {
+  id                String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resource_id       String   @db.Uuid
+  project_id        String   @db.Uuid
+  start_date        DateTime @db.Date
+  end_date          DateTime @db.Date
+  allocation_percent Decimal  @db.Decimal(5, 2)
+  notes             String?  @db.Text
+  created_by        String   @db.Uuid
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active         Boolean  @default(true)
+
+  // Relations
+  resource rcm_resources @relation(fields: [resource_id], references: [id], onDelete: Cascade)
+
+  @@index([resource_id])
+  @@index([project_id])
+  @@index([start_date])
+  @@index([end_date])
+  @@index([is_active])
+}

@@ -16,6 +16,7 @@
  */
 
 const { Client } = require('pg');
+const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -263,6 +264,33 @@ async function initializeDatabase() {
       for (const file of migrationFiles) {
         const fileName = path.basename(file);
         await executeSQLFile(client, file, fileName);
+      }
+    }
+
+    log(''); // Empty line for readability
+
+    // Execute Prisma migrations
+    log('PHASE 3: Executing Prisma Migrations (RCM Schema)', colors.bright);
+    log('-'.repeat(60), colors.bright);
+
+    if (isDryRun) {
+      log('[DRY RUN] Would execute: prisma migrate deploy', colors.yellow);
+    } else {
+      try {
+        log('Running Prisma migrations...', colors.blue);
+
+        // Run Prisma migrate deploy (production-safe migration)
+        execSync('npx prisma migrate deploy', {
+          cwd: path.resolve(__dirname, '..'),
+          stdio: 'inherit',
+          env: process.env
+        });
+
+        log('  ✓ Prisma migrations completed successfully', colors.green);
+      } catch (error) {
+        log(`  ✗ Error running Prisma migrations: ${error.message}`, colors.red);
+        log('  Note: If you haven\'t created Prisma migrations yet, this is expected.', colors.yellow);
+        // Don't throw - allow initialization to complete even if Prisma migrations fail
       }
     }
 

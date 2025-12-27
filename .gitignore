@@ -83,3 +83,7 @@ $RECYCLE.BIN/
 *.tsbuildinfo
 
 
+run-create-users.sh
+update-passwords.js
+create-users.sql
+create-users-v2.sql
