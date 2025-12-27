@@ -82,8 +82,11 @@ $RECYCLE.BIN/
 # TypeScript
 *.tsbuildinfo
 
+# Context Files
+.context/*
 
 run-create-users.sh
 update-passwords.js
 create-users.sql
 create-users-v2.sql
+context/Labor Heat Map Master4.xlsm - P0003C.tsv
