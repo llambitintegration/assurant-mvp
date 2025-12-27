@@ -7,7 +7,7 @@ import { log_error } from "../util";
  * Socket handler to retrieve the number of subtasks for a given task
  * Used to validate on the client side whether a task should show progress inputs
  */
-export async function on_get_task_subtasks_count(io: any, socket: Socket, taskId: string) {
+export async function on_get_task_subtasks_count(_io: unknown, socket: Socket, taskId: string) {
   try {
     if (!taskId) {
       return;

@@ -65,11 +65,11 @@ export default class BillingController extends WorklenzControllerBase {
       });
   }
 
-  public static async saveLocalTransaction(signature: string, data: any) {
+  public static async saveLocalTransaction(_signature: string, _data: unknown) {
     try {
       const q = `INSERT INTO transactions (status, transaction_id, transaction_status, description, date_time, reference, amount, card_number)
 VALUES ($1, $2, $3);`;
-      const result = await db.query(q, []);
+      await db.query(q, []);
     } catch (error) {
       log_error(error);
     }
@@ -110,11 +110,9 @@ VALUES ($1, $2, $3);`;
     if (!seatCount) return res.status(200).send(new ServerResponse(false, null));
     const email = req.user?.email;
     const name = req.user?.name;
-    const amount = await this.getInitialCharge(parseInt(seatCount as string));
     const uniqueTimestamp = moment().format("YYYYMMDDHHmmss");
-    const billingMonth = await this.getBillingMonth();
 
-    const { DP_MERCHANT_ID, DP_SECRET_KEY, DP_STAGE } = process.env;
+    const { DP_MERCHANT_ID, DP_SECRET_KEY } = process.env;
 
     const payload = {
       merchant_id: DP_MERCHANT_ID,
@@ -139,19 +137,18 @@ VALUES ($1, $2, $3);`;
     const encodePayload = CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(JSON.stringify(payload)));
     const signature = CryptoJS.HmacSHA256(encodePayload, DP_SECRET_KEY as string);
 
-    return res.status(200).send(new ServerResponse(true, { signature: signature.toString(CryptoJS.enc.Hex), dataString: encodePayload, stage: DP_STAGE }));
+    return res.status(200).send(new ServerResponse(true, { signature: signature.toString(CryptoJS.enc.Hex), dataString: encodePayload, stage: process.env.DP_STAGE }));
   }
 
   @HandleExceptions()
   public static async saveTransactionData(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     const { status, card, transaction, seatCount } = req.body;
-    const { DP_MERCHANT_ID, DP_STAGE } = process.env;
+    const { DP_MERCHANT_ID } = process.env;
 
     const email = req.user?.email;
 
     const amount = await this.getInitialCharge(parseInt(seatCount as string));
     const uniqueTimestamp = moment().format("YYYYMMDDHHmmss");
-    const billingMonth = await this.getBillingMonth();
 
     const values = [
       status,
@@ -222,13 +219,7 @@ VALUES ($1, $2, $3);`;
   }
 
   @HandleExceptions()
-  public static async getCardList(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const payload = {
-      "merchantId": "RT02300",
-      "reference": "1234",
-      "type": "LIST_CARD"
-    };
-
+  public static async getCardList(_req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     const { DP_STAGE } = process.env;
 
     const dataString = `RT023001234LIST_CARD`;

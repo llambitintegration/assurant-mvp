@@ -54,7 +54,7 @@ export default class ScheduleControllerV2 extends ScheduleTasksControllerBase {
 
   // Migrate data
   @HandleExceptions()
-  public static async migrate(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+  public static async migrate(_req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     const getDataq = `SELECT p.id,
     (SELECT COALESCE(ARRAY_TO_JSON(ARRAY_AGG(ROW_TO_JSON(rec))), '[]'::JSON)
      FROM (SELECT tmiv.team_member_id,
@@ -451,7 +451,6 @@ AND p.id NOT IN (SELECT project_id FROM archived_projects)`;
     const projectId = req.params.id as string;
     const teamMemberId = req.query.team_member_id as string;
     const timeZone = req.query.timeZone as string;
-    const projectIndicatorRefresh = req.query.isProjectRefresh;
 
     const q = `SELECT id,
                       allocated_from,
@@ -543,7 +542,6 @@ AND p.id NOT IN (SELECT project_id FROM archived_projects)`;
     const projectId = req.params.id as string;
     const teamMemberId = req.query.team_member_id as string;
     const timeZone = req.query.timeZone as string;
-    const projectIndicatorRefresh = req.query.isProjectRefresh;
 
     const q = `SELECT id,
                       allocated_from,
@@ -720,13 +718,11 @@ AND p.id NOT IN (SELECT project_id FROM archived_projects)`;
     }
   }
 
-  private static getQuery(userId: string, options: ParsedQs) {
+  private static getQuery(_userId: string, options: ParsedQs) {
     const searchField = options.search ? "t.name" : "sort_order";
-    const { searchQuery, sortField } = ScheduleControllerV2.toPaginationOptions(options, searchField);
+    const { searchQuery } = ScheduleControllerV2.toPaginationOptions(options, searchField);
 
     const isSubTasks = !!options.parent_task;
-
-    const sortFields = sortField.replace(/ascend/g, "ASC").replace(/descend/g, "DESC") || "sort_order";
     const membersFilter = ScheduleControllerV2.getFilterByMembersWhereClosure(options.members as string);
     const statusesQuery = ScheduleControllerV2.getStatusesQuery(options.filterBy as string);
 

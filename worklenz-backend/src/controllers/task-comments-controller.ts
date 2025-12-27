@@ -11,7 +11,7 @@ import { HTML_TAG_REGEXP, S3_URL, getStorageUrl } from "../shared/constants";
 import { getBaseUrl } from "../cron_jobs/helpers";
 import { ICommentEmailNotification } from "../interfaces/comment-email-notification";
 import { sendTaskComment } from "../shared/email-notifications";
-import { getRootDir, uploadBase64, getKey, getTaskAttachmentKey, createPresignedUrlWithClient } from "../shared/s3";
+import { getRootDir, uploadBase64, getTaskAttachmentKey, createPresignedUrlWithClient } from "../shared/s3";
 import { getFreePlanSettings, getUsedStorage } from "../shared/paddle-utils";
 
 interface ITaskAssignee {
@@ -266,7 +266,7 @@ export default class TaskCommentsController extends WorklenzControllerBase {
   public static async update(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     req.body.user_id = req.user?.id;
     req.body.team_id = req.user?.team_id;
-    const { mentions, comment_id } = req.body;
+    const { mentions } = req.body;
 
     let commentContent = req.body.content;
     if (mentions.length > 0) {

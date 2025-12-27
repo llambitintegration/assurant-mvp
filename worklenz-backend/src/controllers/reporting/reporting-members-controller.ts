@@ -328,7 +328,7 @@ export default class ReportingMembersController extends ReportingControllerBaseW
                     ((SELECT SUM(time_spent) FROM task_work_log twl WHERE twl.task_id = t.id AND twl.user_id = (SELECT user_id FROM team_members WHERE id = $1)) - (total_minutes * 60)) AS overlogged_time`;
   }
 
-  protected static getActivityLogsOverdue(key: string, dateRange: string[]) {
+  protected static getActivityLogsOverdue(_key: string, dateRange: string[]) {
 
     if (dateRange.length === 2) {
       const end = moment(dateRange[1]).format("YYYY-MM-DD");
@@ -338,7 +338,7 @@ export default class ReportingMembersController extends ReportingControllerBaseW
     return `AND is_overdue_for_date(t.id, NOW()::DATE)`;
   }
 
-  protected static getActivityLogsCreationClause(key: string, dateRange: string[]) {
+  protected static getActivityLogsCreationClause(_key: string, dateRange: string[]) {
     if (dateRange.length === 2) {
       const end = moment(dateRange[1]).format("YYYY-MM-DD");
       return `AND tl.created_at::DATE <= '${end}'::DATE`;
@@ -431,7 +431,7 @@ export default class ReportingMembersController extends ReportingControllerBaseW
 
   @HandleExceptions()
   public static async export(req: IWorkLenzRequest, res: IWorkLenzResponse) {
-    const { search } = req.body;
+    const { } = req.body;
     const { duration, date_range } = req.query;
     const archived = req.query.archived === "true";
 

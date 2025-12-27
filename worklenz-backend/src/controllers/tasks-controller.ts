@@ -8,7 +8,7 @@ import db from "../config/db";
 import { ServerResponse } from "../models/server-response";
 import { S3_URL, TASK_STATUS_COLOR_ALPHA } from "../shared/constants";
 import { getDates, getMinMaxOfTaskDates, getMonthRange, getWeekRange } from "../shared/tasks-controller-utils";
-import { getColor, getRandomColorCode, humanFileSize, log_error, toMinutes } from "../shared/utils";
+import { getColor, getRandomColorCode, log_error, toMinutes } from "../shared/utils";
 import WorklenzControllerBase from "./worklenz-controller-base";
 import HandleExceptions from "../decorators/handle-exceptions";
 import { NotificationsService } from "../services/notifications/notifications.service";
@@ -61,6 +61,7 @@ export default class TasksController extends TasksControllerBase {
       return attachmentIds;
     } catch (error) {
       log_error(error);
+      return [];
     }
   }
 

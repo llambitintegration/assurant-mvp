@@ -53,21 +53,13 @@ export default class TaskStatusesController extends WorklenzControllerBase {
   }
 
   @HandleExceptions()
-  public static async getCategories(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+  public static async getCategories(_req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     const q = `SELECT id, name, color_code, color_code_dark, description
                FROM sys_task_status_categories
                ORDER BY index;`;
     const result = await db.query(q, []);
 
     return res.status(200).send(new ServerResponse(true, result.rows));
-  }
-
-  private static async getStatusByGroups(projectId: string) {
-    if (!projectId) return;
-
-    const q = ``;
-    const result = await db.query(q, [projectId]);
-    return result.rows;
   }
 
   @HandleExceptions()

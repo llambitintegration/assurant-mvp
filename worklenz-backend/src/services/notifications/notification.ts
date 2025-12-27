@@ -3,15 +3,15 @@ export declare type Params = {
 };
 
 export default class WorklenzNotification {
-  private team: string;
-  private team_id: string;
-  private message: string;
-  private url: string | null;
-  private project?: string;
-  private color?: string;
-  private params?: Params;
-  private task_id?: string;
-  private project_id?: string;
+  public team: string;
+  public team_id: string;
+  public message: string;
+  public url: string | null;
+  public project?: string;
+  public color?: string;
+  public params?: Params;
+  public task_id?: string;
+  public project_id?: string;
 
   constructor(teamName: string, teamId: string, message: string, url: string | null) {
     this.team = teamName;

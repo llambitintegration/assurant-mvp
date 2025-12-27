@@ -5,22 +5,10 @@ import db from "../config/db";
 import {ServerResponse} from "../models/server-response";
 import WorklenzControllerBase from "./worklenz-controller-base";
 import HandleExceptions from "../decorators/handle-exceptions";
-import {getColor, slugify} from "../shared/utils";
-import { HTML_TAG_REGEXP } from "../shared/constants";
-import { IProjectCommentEmailNotification } from "../interfaces/comment-email-notification";
-import { sendProjectComment } from "../shared/email-notifications";
+import {getColor} from "../shared/utils";
 import { NotificationsService } from "../services/notifications/notifications.service";
 import { IO } from "../shared/io";
 import { SocketEvents } from "../socket.io/events";
-
-interface IMailConfig {
-  message: string;
-  receiverEmail: string;
-  receiverName: string;
-  content: string;
-  teamName: string;
-  projectName: string;
-}
 
 interface IMention {
   id: string;
@@ -42,21 +30,6 @@ export default class ProjectCommentsController extends WorklenzControllerBase {
 
     return replacedContent;
   }
-
-  private static async sendMail(config: IMailConfig) {
-    const subject = config.message.replace(HTML_TAG_REGEXP, "");
-
-    const data: IProjectCommentEmailNotification = {
-      greeting: `Hi ${config.receiverName}`,
-      summary: subject,
-      team: config.teamName,
-      project_name: config.projectName,
-      comment: config.content
-    };
-
-    await sendProjectComment(config.receiverEmail, data);
-  }
-
 
   @HandleExceptions()
   public static async create(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
@@ -177,7 +150,6 @@ export default class ProjectCommentsController extends WorklenzControllerBase {
   @HandleExceptions()
   public static async getByProjectId(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
 
-    const limit = req.query.isLimit;
 
     const q = `
       SELECT

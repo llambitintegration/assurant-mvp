@@ -8,9 +8,8 @@ import {getLoggedInUserIdFromSocket, log, log_error, notifyProjectUpdates} from 
 import TasksControllerV2 from "../../controllers/tasks-controller-v2";
 import {getTaskDetails, logProgressChange, logStatusChange} from "../../services/activity-logs/activity-logs.service";
 import { assignMemberIfNot } from "./on-quick-assign-or-remove";
-import logger from "../../utils/logger";
 
-export async function on_task_status_change(_io: Server, socket: Socket, data?: string) {
+export async function on_task_status_change(_io: Server, socket: Socket, data?: string): Promise<void> {
   try {
     const body = JSON.parse(data as string);
     const userId = getLoggedInUserIdFromSocket(socket);
@@ -21,7 +20,7 @@ export async function on_task_status_change(_io: Server, socket: Socket, data?: 
     if (!canContinue) {
       const {color_code, color_code_dark} = await TasksControllerV2.getTaskStatusColor(taskData.status_id);
 
-      return socket.emit(SocketEvents.TASK_STATUS_CHANGE.toString(), {
+      socket.emit(SocketEvents.TASK_STATUS_CHANGE.toString(), {
         id: body.task_id,
         parent_task: body.parent_task,
         status_id: taskData.status_id,
@@ -29,6 +28,7 @@ export async function on_task_status_change(_io: Server, socket: Socket, data?: 
         color_code_dark,
         completed_deps: canContinue
       });
+      return;
     }
     const q2 = "SELECT handle_on_task_status_change($1, $2, $3) AS res;";
     const results1 = await db.query(q2, [userId, body.task_id, body.status_id]);
@@ -60,7 +60,6 @@ export async function on_task_status_change(_io: Server, socket: Socket, data?: 
       `, [body.task_id]);
 
       const currentProgress = progressResult.rows[0]?.progress_value;
-      const isManualProgress = progressResult.rows[0]?.manual_progress;
 
       // Only update if not already 100%
       if (currentProgress !== 100) {

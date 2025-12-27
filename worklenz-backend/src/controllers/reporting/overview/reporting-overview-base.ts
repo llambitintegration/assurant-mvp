@@ -322,7 +322,7 @@ export default class ReportingOverviewBase extends ReportingControllerBase {
 
   }
 
-  protected static activityLogDurationFilter(key: string, dateRange: string[]) {
+  protected static activityLogDurationFilter(_key: string, dateRange: string[]) {
     if (dateRange.length === 2) {
       const start = moment(dateRange[0]).format("YYYY-MM-DD");
       const end = moment(dateRange[1]).format("YYYY-MM-DD");
@@ -393,7 +393,7 @@ export default class ReportingOverviewBase extends ReportingControllerBase {
     return "";
   }
 
-  protected static overdueTasksByDate(key: string, dateRange: string[], archivedClause: string) {
+  protected static overdueTasksByDate(_key: string, dateRange: string[], archivedClause: string) {
     if (dateRange.length === 2) {
       const end = moment(dateRange[1]).format("YYYY-MM-DD");
       return `(SELECT COUNT(CASE WHEN is_overdue_for_date(t.id, '${end}'::DATE) IS TRUE THEN 1 END)
@@ -599,7 +599,6 @@ export default class ReportingOverviewBase extends ReportingControllerBase {
     ? ""
     : `AND p.id NOT IN (SELECT project_id FROM archived_projects WHERE project_id = p.id AND archived_projects.user_id = '${userId}')`;
 
-    const durationFilter = this.memberTasksDurationFilter(key, dateRange);
     const activityLogDateFilter = this.getActivityLogsCreationClause(key, dateRange);
     const completedDatebetweenClause = this.getCompletedBetweenClause(key, dateRange);
 
@@ -693,7 +692,6 @@ export default class ReportingOverviewBase extends ReportingControllerBase {
     : `AND t.project_id NOT IN (SELECT project_id FROM archived_projects WHERE project_id = t.project_id AND archived_projects.user_id = '${userId}')`;
 
 
-    const durationFilter = this.memberTasksDurationFilter(key, dateRange);
     const activityLogDateFilter = this.getActivityLogsCreationClause(key, dateRange);
     const completedDatebetweenClause = this.getCompletedBetweenClause(key, dateRange);
 
@@ -743,7 +741,7 @@ export default class ReportingOverviewBase extends ReportingControllerBase {
     return { chart, total, data };
   }
 
-  protected static getActivityLogsCreationClause(key: string, dateRange: string[]) {
+  protected static getActivityLogsCreationClause(_key: string, dateRange: string[]) {
     if (dateRange.length === 2) {
       const end = moment(dateRange[1]).format("YYYY-MM-DD");
       return `AND tl.created_at::DATE <= '${end}'::DATE`;
@@ -751,7 +749,7 @@ export default class ReportingOverviewBase extends ReportingControllerBase {
     return `AND tl.created_at::DATE <= NOW()::DATE`;
   }
 
-  protected static getCompletedBetweenClause(key: string, dateRange: string[]) {
+  protected static getCompletedBetweenClause(_key: string, dateRange: string[]) {
     if (dateRange.length === 2) {
       const start = moment(dateRange[0]).format("YYYY-MM-DD");
       const end = moment(dateRange[1]).format("YYYY-MM-DD");
@@ -805,7 +803,6 @@ export default class ReportingOverviewBase extends ReportingControllerBase {
     : `AND t.project_id NOT IN (SELECT project_id FROM archived_projects WHERE project_id = t.project_id AND archived_projects.user_id = '${userId}')`;
 
 
-    const durationFilter = this.memberTasksDurationFilter(key, dateRange);
     const completedBetweenFilter = this.getCompletedBetweenClause(key, dateRange);
     const activityLogCreationFilter = this.getActivityLogsCreationClause(key, dateRange);
 

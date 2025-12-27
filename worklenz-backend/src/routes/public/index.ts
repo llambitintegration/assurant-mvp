@@ -5,7 +5,7 @@ import safeControllerFunction from "../../shared/safe-controller-function";
 const public_router = express.Router();
 
 public_router.post("/new-subscriber", safeControllerFunction(ClientsController.addSubscriber));
-public_router.get("/health", (req, res) => {
+public_router.get("/health", (_req, res) => {
     res.status(200).json({ status: "ok" });
 });
 

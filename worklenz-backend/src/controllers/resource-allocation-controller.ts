@@ -60,8 +60,6 @@ export default class ResourceallocationController extends WorklenzControllerBase
 
     const scheduleData = JSON.parse(data.resources);
 
-    const obj = [];
-
     for (const element of scheduleData) {
       element.color_code = getColor(element.name);
       for (const schedule of element.schedule) {

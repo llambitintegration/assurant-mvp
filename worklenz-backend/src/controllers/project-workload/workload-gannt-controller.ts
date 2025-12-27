@@ -10,15 +10,6 @@ import { TASK_PRIORITY_COLOR_ALPHA, TASK_STATUS_COLOR_ALPHA, UNMAPPED } from "..
 import { getColor } from "../../shared/utils";
 import WLTasksControllerBase, { GroupBy, IWLTaskGroup } from "./workload-gannt-base";
 
-interface IWorkloadTask {
-  id: string;
-  name: string;
-  start_date: string;
-  end_date: string;
-  width: number;
-  left: number;
-}
-
 export class IWLTaskListGroup implements IWLTaskGroup {
   name: string;
   category_id: string | null;
@@ -83,34 +74,6 @@ export default class WorkloadGanntController extends WLTasksControllerBase {
     const daysDifference = today.diff(startDate, "days");
 
     return (this.GLOBAL_DATE_WIDTH * daysDifference);
-  }
-
-  private static setTaskCss(task: IWorkloadTask) {
-    let startDate = task.start_date ? moment(task.start_date) : moment();
-    let endDate = task.end_date ? moment(task.end_date) : moment();
-
-    if (!task.start_date) {
-      startDate = moment(task.end_date);
-    }
-    if (!task.end_date) {
-      endDate = moment(task.start_date);
-    }
-    if (!task.start_date && !task.end_date) {
-      startDate = moment();
-      endDate = moment();
-    }
-
-    const daysDifferenceFromStart = startDate.diff(this.GLOBAL_START_DATE, "days");
-    task.left = daysDifferenceFromStart * this.GLOBAL_DATE_WIDTH;
-
-    if (moment(startDate).isSame(moment(endDate), "day")) {
-      task.width = this.GLOBAL_DATE_WIDTH;
-    } else {
-      const taskWidth = endDate.diff(startDate, "days");
-      task.width = (taskWidth + 1) * this.GLOBAL_DATE_WIDTH;
-    }
-
-    return task;
   }
 
   private static setIndicator(startDate: string, endDate: string) {
@@ -220,7 +183,6 @@ export default class WorkloadGanntController extends WLTasksControllerBase {
   @HandleExceptions()
   public static async getMembers(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
 
-    const expandedMembers: string[] = req.body.expanded_members;
 
     const q = `SELECT pm.id AS project_member_id,
                       tmiv.team_member_id,
@@ -437,13 +399,11 @@ export default class WorkloadGanntController extends WLTasksControllerBase {
     }
   }
 
-  private static getQuery(userId: string, options: ParsedQs) {
+  private static getQuery(_userId: string, options: ParsedQs) {
     const searchField = options.search ? "t.name" : "sort_order";
-    const { searchQuery, sortField } = WorkloadGanntController.toPaginationOptions(options, searchField);
+    const { searchQuery } = WorkloadGanntController.toPaginationOptions(options, searchField);
 
     const isSubTasks = !!options.parent_task;
-
-    const sortFields = sortField.replace(/ascend/g, "ASC").replace(/descend/g, "DESC") || "sort_order";
     // Filter tasks by its members
     const membersFilter = WorkloadGanntController.getFilterByMembersWhereClosure(options.members as string);
     // Returns statuses of each task as a json array if filterBy === "member"

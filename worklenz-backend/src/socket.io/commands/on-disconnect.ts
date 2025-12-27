@@ -3,7 +3,7 @@ import db from "../../config/db";
 
 import {log} from "../util";
 
-export async function on_disconnect(io: Server, socket: Socket, reason?: string) {
+export async function on_disconnect(_io: Server, socket: Socket, reason?: string) {
   log(socket.id, `disconnected (${reason})`);
   try {
     const q = "UPDATE users SET socket_id = NULL WHERE socket_id = $1";

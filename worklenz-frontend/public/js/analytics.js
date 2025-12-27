@@ -13,6 +13,9 @@ class AnalyticsManager {
    * Initialize Google Analytics asynchronously
    */
   init() {
+    // Analytics disabled - remove this return statement to re-enable
+    return;
+
     const loadAnalytics = () => {
       // Load the Google Analytics script
       const script = document.createElement('script');

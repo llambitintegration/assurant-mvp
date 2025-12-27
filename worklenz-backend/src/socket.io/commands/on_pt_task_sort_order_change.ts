@@ -1,11 +1,9 @@
 import { Server, Socket } from "socket.io";
-import { getLoggedInUserIdFromSocket, log_error } from "../util";
+import { log_error } from "../util";
 import db from "../../config/db";
 import { SocketEvents } from "../events";
 import { UNMAPPED } from "../../shared/constants";
 import { GroupBy } from "../../controllers/project-templates/pt-tasks-controller-base";
-import TasksControllerV2 from "../../controllers/tasks-controller-v2";
-import { assignMemberIfNot } from "./on-quick-assign-or-remove";
 
 interface ChangeRequest {
     from_index: number; // from sort_order

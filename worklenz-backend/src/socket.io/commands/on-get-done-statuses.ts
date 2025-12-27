@@ -15,9 +15,9 @@ type DoneStatusesCallback = (statuses: Array<{
  * Used when prompting users to mark a task as done when progress reaches 100%
  */
 export async function on_get_done_statuses(
-  io: any, 
-  socket: Socket, 
-  projectId: string, 
+  _io: unknown,
+  _socket: Socket,
+  projectId: string,
   callback: DoneStatusesCallback
 ) {
   try {

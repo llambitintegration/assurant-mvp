@@ -12,7 +12,7 @@ export async function on_pt_task_time_estimation_change(_io: Server, socket: Soc
         const minutes = body.total_minutes || 0;
         const totalMinutes = (hours * 60) + minutes;
     
-        const result = await db.query(q, [body.task_id, totalMinutes]);
+        await db.query(q, [body.task_id, totalMinutes]);
 
         const d = {
           id: body.task_id,

@@ -11,18 +11,6 @@ export class NotificationsService {
   public static TYPE_POP = 1;
   public static TYPE_EMAIL = 2;
 
-  private static isAllowPopup(type: number) {
-    return type & this.TYPE_POP;
-  }
-
-  private static isAllowEmail(type: number) {
-    return type & this.TYPE_EMAIL;
-  }
-
-  private static isAllowBoth(type: number) {
-    return this.isAllowPopup(type) && this.isAllowEmail(type);
-  }
-
   public static async createTaskUpdate(type: string, reporterId: string, taskId: string, userId: string, teamId: string) {
     if (!userId || !taskId) return;
     try {

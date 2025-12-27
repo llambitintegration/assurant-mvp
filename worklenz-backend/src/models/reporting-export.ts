@@ -84,14 +84,12 @@ export class ReportingExportModel extends ReportingOverviewBase {
   }
 
 
-  public static async getMemberTasks(teamMemberId: string, projectId: string | null, onlySingleMember: string, key: string, dateRange: string[] | [], includeArchived: boolean, userId: string) {
+  public static async getMemberTasks(teamMemberId: string, projectId: string | null, onlySingleMember: string, _key: string, _dateRange: string[] | [], includeArchived: boolean, userId: string) {
 
     const projectFilter = projectId ? ` AND t.project_id = $2` : "";
 
-    let activityLogDurationFilterClause = ``;
     let archivedClause = ``;
     if (onlySingleMember === "true") {
-      activityLogDurationFilterClause = this.activityLogDurationFilter(key, dateRange);
       archivedClause = includeArchived ? "" : `AND t.project_id NOT IN (SELECT project_id FROM archived_projects WHERE project_id = t.project_id AND archived_projects.user_id = '${userId}')`;
     }
 

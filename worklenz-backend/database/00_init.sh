@@ -3,9 +3,92 @@ set -e
 
 echo "Starting database initialization..."
 
-SQL_DIR="/docker-entrypoint-initdb.d/sql"
-MIGRATIONS_DIR="/docker-entrypoint-initdb.d/migrations"
-BACKUP_DIR="/docker-entrypoint-initdb.d/pg_backups"
+# --------------------------------------------
+# 📁 Load .env file if available
+# --------------------------------------------
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Look for .env file in parent directory (worklenz-backend/.env)
+ENV_FILE="${ENV_FILE:-$SCRIPT_DIR/../.env}"
+
+if [ -f "$ENV_FILE" ]; then
+  echo "📁 Loading environment from: $ENV_FILE"
+  # Export all variables from .env file (skip comments and empty lines)
+  while IFS= read -r line || [ -n "$line" ]; do
+    # Strip Windows carriage returns
+    line="${line//$'\r'/}"
+    # Skip empty lines and comments
+    if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
+      # Only process lines that look like VAR=value
+      if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+        key="${BASH_REMATCH[1]}"
+        value="${BASH_REMATCH[2]}"
+        # Remove surrounding quotes if present
+        value="${value#\"}"
+        value="${value%\"}"
+        value="${value#\'}"
+        value="${value%\'}"
+        # Remove inline comments (but not if # is inside a URL or quoted string)
+        # Only strip comments that have a space before #
+        if [[ "$value" =~ ^([^#]*[^[:space:]])[[:space:]]+#.*$ ]]; then
+          value="${BASH_REMATCH[1]}"
+        fi
+        # Export the variable
+        export "$key=$value"
+      fi
+    fi
+  done < "$ENV_FILE"
+else
+  echo "ℹ️ No .env file found at $ENV_FILE (this is OK if env vars are already set)"
+fi
+
+# --------------------------------------------
+# 🔧 Environment Detection & Configuration
+# --------------------------------------------
+
+# Detect if we're running in Docker or standalone (e.g., for Neon DB)
+if [ -n "$DATABASE_URL" ]; then
+  echo "🌐 Detected DATABASE_URL - using Neon/remote PostgreSQL mode"
+  DB_MODE="neon"
+else
+  echo "🐳 No DATABASE_URL - using Docker PostgreSQL mode"
+  DB_MODE="docker"
+fi
+
+# Set paths based on environment
+if [ "$DB_MODE" = "docker" ]; then
+  SQL_DIR="/docker-entrypoint-initdb.d/sql"
+  MIGRATIONS_DIR="/docker-entrypoint-initdb.d/migrations"
+  BACKUP_DIR="/docker-entrypoint-initdb.d/pg_backups"
+else
+  # For Neon/standalone mode, use paths relative to this script
+  SQL_DIR="${SQL_DIR:-$SCRIPT_DIR/sql}"
+  MIGRATIONS_DIR="${MIGRATIONS_DIR:-$SCRIPT_DIR/migrations}"
+  BACKUP_DIR="${BACKUP_DIR:-$SCRIPT_DIR/pg_backups}"
+fi
+
+# --------------------------------------------
+# 🔗 Database Connection Helper
+# --------------------------------------------
+
+# Helper function to run psql commands with proper connection
+run_psql() {
+  if [ "$DB_MODE" = "neon" ]; then
+    psql "$DATABASE_URL" "$@"
+  else
+    psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" "$@"
+  fi
+}
+
+# Helper function to run psql with ON_ERROR_STOP
+run_psql_strict() {
+  if [ "$DB_MODE" = "neon" ]; then
+    psql -v ON_ERROR_STOP=1 "$DATABASE_URL" "$@"
+  else
+    psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" "$@"
+  fi
+}
 
 # Optional environment overrides for admin seeding
 #   PRESEED_ADMIN_USER   Enable preseed flow when set to "TRUE"
@@ -30,14 +113,13 @@ preseed_admin_user() {
   local admin_name="${ADMIN_NAME:-Default Admin}"
   local admin_team_name="${ADMIN_TEAM_NAME:-Admin Team}"
   local admin_timezone="${ADMIN_TIMEZONE:-UTC}"
-  
+
   # Use pre-computed hash if provided, otherwise use default hash for "Password123!"
-  # Default hash generated with Python bcrypt (should be compatible with Node.js bcrypt)
-  # To generate a new hash using the backend container:
-  #   docker exec worklenz_backend node -e "const bcrypt=require('bcrypt');bcrypt.hash('Password123!',10).then(h=>console.log(h));"
-  # Or locally: cd worklenz-backend && npm install && node scripts/generate-password-hash.js "Password123!"
-  # Then set ADMIN_PASSWORD_HASH environment variable in docker-compose.yml
-  local default_hash='$2b$10$EYoBPHYB/DqOegWf/L8OFuq/sIX83YukvzgMyJzAcXsO8oMUF0h.u'
+  # Default hash generated with: node scripts/generate-password-hash.js "Password123!"
+  # To generate a new hash:
+  #   cd worklenz-backend && node scripts/generate-password-hash.js "YourPassword"
+  # Then set ADMIN_PASSWORD_HASH environment variable
+  local default_hash='$2b$10$6kjqReF6NFrcGmgjgkp0Xe2.hPHquohFFmilGlxzArs2t4MYGV2oS'
   local admin_password_hash="${ADMIN_PASSWORD_HASH:-$default_hash}"
 
   if [[ -z "$admin_email" ]]; then
@@ -52,7 +134,7 @@ preseed_admin_user() {
 
   echo "👤 Ensuring admin user '$admin_email' exists..."
 
-  psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<SQL
+  run_psql_strict <<SQL
 DO \$\$
 DECLARE
   _admin_email TEXT := '$admin_email';
@@ -110,7 +192,7 @@ fi
 if [ -f "$LATEST_BACKUP" ]; then
   echo "🗄️ Found latest backup: $LATEST_BACKUP"
   echo "⏳ Restoring from backup..."
-  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" < "$LATEST_BACKUP"
+  run_psql < "$LATEST_BACKUP"
   echo "✅ Backup restoration complete. Skipping schema and migrations."
   exit 0
 else
@@ -122,7 +204,7 @@ fi
 # --------------------------------------------
 
 # Create migrations table if it doesn't exist
-psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+run_psql -c "
   CREATE TABLE IF NOT EXISTS schema_migrations (
     version TEXT PRIMARY KEY,
     applied_at TIMESTAMP DEFAULT now()
@@ -138,8 +220,14 @@ BASE_SQL_FILES=(
   "triggers.sql"
   "3_views.sql"
   "2_dml.sql"
-  "5_database_user.sql"
 )
+
+# Add database user setup only for Docker mode (Neon manages its own permissions)
+if [ "$DB_MODE" = "docker" ]; then
+  BASE_SQL_FILES+=("5_database_user.sql")
+else
+  echo "ℹ️ Skipping 5_database_user.sql (not needed for Neon/cloud PostgreSQL)"
+fi
 
 echo "Running base schema SQL files in order..."
 
@@ -147,7 +235,7 @@ for file in "${BASE_SQL_FILES[@]}"; do
   full_path="$SQL_DIR/$file"
   if [ -f "$full_path" ]; then
     echo "Executing $file..."
-    psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$full_path"
+    run_psql_strict -f "$full_path"
   else
     echo "WARNING: $file not found, skipping."
   fi
@@ -169,10 +257,10 @@ if [ -d "$MIGRATIONS_DIR" ] && compgen -G "$MIGRATIONS_DIR/*.sql" > /dev/null; t
   echo "Applying migrations..."
   for f in "$MIGRATIONS_DIR"/*.sql; do
     version=$(basename "$f")
-    if ! psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT 1 FROM schema_migrations WHERE version = '$version'" | grep -q 1; then
+    if ! run_psql -tAc "SELECT 1 FROM schema_migrations WHERE version = '$version'" | grep -q 1; then
       echo "Applying migration: $version"
-      psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$f"
-      psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "INSERT INTO schema_migrations (version) VALUES ('$version');"
+      run_psql -f "$f"
+      run_psql -c "INSERT INTO schema_migrations (version) VALUES ('$version');"
     else
       echo "Skipping already applied migration: $version"
     fi

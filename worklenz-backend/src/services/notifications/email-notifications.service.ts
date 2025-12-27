@@ -1,5 +1,5 @@
 export default class EmailNotificationsService {
-  public static sendStatusChange() {
-    const message = "";
+  public static sendStatusChange(): void {
+    // Placeholder for future implementation
   }
 }

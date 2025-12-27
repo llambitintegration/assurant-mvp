@@ -13,7 +13,7 @@ import { getCurrentProjectsCount, getFreePlanSettings } from "../../shared/paddl
 export default class ProjectTemplatesController extends ProjectTemplatesControllerBase {
 
     @HandleExceptions()
-    public static async getTemplates(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+    public static async getTemplates(_req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
         const q = `SELECT id, name FROM pt_project_templates ORDER BY name;`;
         const result = await db.query(q, []);
         return res.status(200).send(new ServerResponse(true, result.rows));
@@ -78,7 +78,7 @@ export default class ProjectTemplatesController extends ProjectTemplatesControll
     }
 
     @HandleExceptions()
-    public static async createTemplates(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+    public static async createTemplates(_req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
         for (const template of templateData) {
             let template_id: string | null = null;
             template_id = await this.insertProjectTemplate(template);
@@ -143,7 +143,7 @@ export default class ProjectTemplatesController extends ProjectTemplatesControll
         if (!team_id || !project_id) return res.status(400).send(new ServerResponse(false, {}));
 
 
-        let status, labels, phases = [];
+        let status, phases = [];
 
         const data = await this.getProjectData(project_id);
 
@@ -154,7 +154,7 @@ export default class ProjectTemplatesController extends ProjectTemplatesControll
             phases = await this.getProjectPhases(project_id);
         }
         if (projectIncludes.labels) {
-            labels = await this.getProjectLabels(team_id, project_id);
+            await this.getProjectLabels(team_id, project_id);
         }
 
         const tasks = await this.getTasksByProject(project_id, taskIncludes);

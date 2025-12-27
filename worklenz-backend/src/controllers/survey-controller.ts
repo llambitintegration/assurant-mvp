@@ -8,7 +8,7 @@ import db from "../config/db";
 
 export default class SurveyController extends WorklenzControllerBase {
   @HandleExceptions()
-  public static async getAccountSetupSurvey(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+  public static async getAccountSetupSurvey(_req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     const q = `
       SELECT 
         s.id,

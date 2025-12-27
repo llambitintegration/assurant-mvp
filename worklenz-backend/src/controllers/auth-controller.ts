@@ -56,13 +56,14 @@ export default class AuthController extends WorklenzControllerBase {
     return res.status(200).send(new AuthResponse(title, req.isAuthenticated(), req.user || null, auth_error, message));
   }
 
-  public static logout(req: IWorkLenzRequest, res: IWorkLenzResponse) {
+  public static logout(req: IWorkLenzRequest, res: IWorkLenzResponse): void {
     req.logout((err) => {
       if (err) {
         console.error("Logout error:", err);
-        return res.status(500).send(new AuthResponse(null, true, {}, "Logout failed", null));
+        res.status(500).send(new AuthResponse(null, true, {}, "Logout failed", null));
+        return;
       }
-      
+
       req.session.destroy((destroyErr) => {
         if (destroyErr) {
           console.error("Session destroy error:", destroyErr);
@@ -108,6 +109,7 @@ export default class AuthController extends WorklenzControllerBase {
 
       return res.status(200).send(new ServerResponse(false, null, "Old password does not match!"));
     }
+    return res.status(200).send(new ServerResponse(false, null, "User not found!"));
   }
 
   @HandleExceptions({logWithError: "body"})
@@ -183,11 +185,11 @@ export default class AuthController extends WorklenzControllerBase {
       return res.status(400).send(new ServerResponse(false, null, "Please try again later.").withTitle("Error"));
     } catch (error) {
       log_error(error);
-      res.status(500).send(new ServerResponse(false, null, DEFAULT_ERROR_MESSAGE));
+      return res.status(500).send(new ServerResponse(false, null, DEFAULT_ERROR_MESSAGE));
     }
   }
 
-  public static googleMobileAuthPassport(req: IWorkLenzRequest, res: IWorkLenzResponse, next: NextFunction) {
+  public static googleMobileAuthPassport(req: IWorkLenzRequest, res: IWorkLenzResponse, next: NextFunction): void {
     
     const mobileOptions = {
       session: true,
@@ -195,26 +197,28 @@ export default class AuthController extends WorklenzControllerBase {
       failWithError: false
     };
 
-    passport.authenticate("google-mobile", mobileOptions, (err: any, user: any, info: any) => {
+    passport.authenticate("google-mobile", mobileOptions, (err: any, user: any, info: any): void => {
       if (err) {
-        return res.status(500).send({
+        res.status(500).send({
           done: false,
           message: "Authentication failed",
           body: null
         });
+        return;
       }
-      
+
       if (!user) {
-        return res.status(400).send({
+        res.status(400).send({
           done: false,
           message: info?.message || "Authentication failed",
           body: null
         });
+        return;
       }
       // Log the user in (create session)
-      req.login(user, (loginErr) => {
+      req.login(user, (loginErr): void => {
         if (loginErr) {
-          return res.status(500).send({
+          res.status(500).send({
             done: false,
             message: "Session creation failed",
             body: null
@@ -227,21 +231,22 @@ export default class AuthController extends WorklenzControllerBase {
         // Ensure session is saved and cookie is set
         req.session.save((saveErr) => {
           if (saveErr) {
-            return res.status(500).send({
+            res.status(500).send({
               done: false,
               message: "Session save failed",
               body: null
             });
+            return;
           }
-          
+
           // Get session cookie details
           const sessionName = process.env.SESSION_NAME || 'connect.sid';
           
           // Return response with session info for mobile app to handle
           res.setHeader('X-Session-ID', req.sessionID);
           res.setHeader('X-Session-Name', sessionName);
-          
-          return res.status(200).send({
+
+          res.status(200).send({
             done: true,
             message: "Login successful",
             user,
@@ -256,7 +261,7 @@ export default class AuthController extends WorklenzControllerBase {
   }
 
   @HandleExceptions({logWithError: "body"})
-  public static async googleMobileAuth(req: IWorkLenzRequest, res: IWorkLenzResponse) {
+  public static async googleMobileAuth(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse | void> {
     const {idToken} = req.body;
     
     if (!idToken) {
@@ -330,19 +335,20 @@ export default class AuthController extends WorklenzControllerBase {
       }
 
       // Create session
-      req.login(user, (err) => {
+      req.login(user, (err): void => {
         if (err) {
           log_error(err);
-          return res.status(500).send(new ServerResponse(false, null, "Authentication failed"));
+          res.status(500).send(new ServerResponse(false, null, "Authentication failed"));
+          return;
         }
-        
+
         user.build_v = FileConstants.getRelease();
-        return res.status(200).send(new AuthResponse("Login Successful!", true, user, null, "User successfully logged in"));
+        res.status(200).send(new AuthResponse("Login Successful!", true, user, null, "User successfully logged in"));
       });
 
     } catch (error) {
       log_error(error);
-      return res.status(400).send(new ServerResponse(false, null, "Invalid ID token"));
+      res.status(400).send(new ServerResponse(false, null, "Invalid ID token"));
     }
   }
 }

@@ -18,7 +18,7 @@ const LAST_QUARTER = "LAST_QUARTER";
 
 export default class ReportingController extends WorklenzControllerBase {
   @HandleExceptions()
-  public static async create(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+  public static async create(_req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     const q = ``;
     const result = await db.query(q, []);
     const [data] = result.rows;

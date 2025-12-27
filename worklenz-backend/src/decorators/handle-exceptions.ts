@@ -66,7 +66,7 @@ function handleError(error: any, res: Response, opt: any, req: any) {
 /** HandleExceptions can only be used with an instance of WorklenzControllerBase. */
 export default function HandleExceptions(options?: IExceptionHandlerConfig) {
   const opt = mergeWithDefaults(options);
-  return (target: any, key: string, descriptor: PropertyDescriptor) => {
+  return (target: any, _key: string, descriptor: PropertyDescriptor) => {
     if (!(target.prototype instanceof WorklenzControllerBase))
       throw new Error("@HandleExceptions can only be used with an instance of WorklenzControllerBase.");
 

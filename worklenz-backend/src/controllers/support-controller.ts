@@ -22,7 +22,6 @@ export default class SupportController extends WorklenzControllerBase {
       // Get user's current session data
       const userEmail = user.email;
       const userName = user.name;
-      const subscriptionType = req.body.subscription_type || "Unknown";
       
       // Get organization name from teams table
       let organizationName = "Unknown";

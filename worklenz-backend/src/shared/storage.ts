@@ -13,7 +13,6 @@ import {
   BlobServiceClient,
   StorageSharedKeyCredential,
   ContainerClient,
-  BlockBlobClient,
   generateBlobSASQueryParameters,
   BlobSASPermissions,
 } from "@azure/storage-blob";
@@ -344,7 +343,7 @@ async function createPresignedUrlWithAzureClient(key: string, file: string) {
       throw new Error("Azure Blob Storage not configured properly");
     }
 
-    const blobClient = azureContainerClient.getBlockBlobClient(key);
+    azureContainerClient.getBlockBlobClient(key);
 
     // Create a SAS token that's valid for one hour
     const sharedKeyCredential = new StorageSharedKeyCredential(

@@ -8,7 +8,6 @@ import HandleExceptions from "../decorators/handle-exceptions";
 import {getColor} from "../shared/utils";
 import TeamMembersController from "./team-members-controller";
 import {checkTeamSubscriptionStatus} from "../shared/paddle-utils";
-import {updateUsers} from "../shared/paddle-requests";
 import {statusExclude, TRIAL_MEMBER_LIMIT} from "../shared/constants";
 import {NotificationsService} from "../services/notifications/notifications.service";
 

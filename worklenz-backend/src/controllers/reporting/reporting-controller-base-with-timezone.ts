@@ -1,5 +1,4 @@
 import WorklenzControllerBase from "../worklenz-controller-base";
-import { IWorkLenzRequest } from "../../interfaces/worklenz-request";
 import db from "../../config/db";
 import moment from "moment-timezone";
 import { DATE_RANGES } from "../../shared/constants";

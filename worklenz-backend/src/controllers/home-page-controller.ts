@@ -7,32 +7,6 @@ import {ServerResponse} from "../models/server-response";
 import WorklenzControllerBase from "./worklenz-controller-base";
 import momentTime from "moment-timezone";
 
-interface ITask {
-  id: string,
-  name: string,
-  project_id: string,
-  parent_task_id: string | null,
-  is_sub_task: boolean,
-  parent_task_name: string | null,
-  status_id: string,
-  start_date: string | null,
-  end_date: string | null,
-  created_at: string | null,
-  team_id: string,
-  project_name: string,
-  project_color: string | null,
-  status: string,
-  status_color: string | null,
-  is_task: boolean,
-  done: boolean,
-  updated_at: string | null,
-  project_statuses: [{
-      id: string,
-      name: string | null,
-      color_code: string | null,
-    }]
-}
-
 export default class HomePageController extends WorklenzControllerBase {
 
   private static readonly GROUP_BY_ASSIGNED_TO_ME = "0";
@@ -99,7 +73,7 @@ export default class HomePageController extends WorklenzControllerBase {
     }
   }
 
-  private static async getTasksResult(groupByClosure: string, currentTabClosure: string, teamId: string, userId: string) {
+  private static async getTasksResult(groupByClosure: string, _currentTabClosure: string, teamId: string, userId: string) {
     const q = `
       SELECT t.id,
              t.name,
@@ -146,31 +120,6 @@ export default class HomePageController extends WorklenzControllerBase {
 
     const result = await db.query(q, [teamId, userId]);
     return result.rows;
-  }
-
-  private static async getCountsResult(groupByClosure: string, teamId: string, userId: string) {
-    const q = `SELECT COUNT(*) AS total,
-                      COUNT(CASE WHEN t.end_date::DATE = CURRENT_DATE::DATE THEN 1 END) AS today,
-                      COUNT(CASE WHEN t.end_date::DATE > CURRENT_DATE::DATE THEN 1 END) AS upcoming,
-                      COUNT(CASE WHEN t.end_date::DATE < CURRENT_DATE::DATE THEN 1 END) AS overdue,
-                      COUNT(CASE WHEN t.end_date::DATE IS NULL THEN 1 END) AS no_due_date
-               FROM tasks t
-                      JOIN projects p ON t.project_id = p.id
-               WHERE t.archived IS FALSE
-                 AND t.status_id NOT IN (SELECT id
-                                         FROM task_statuses
-                                         WHERE category_id NOT IN (SELECT id
-                                                                   FROM sys_task_status_categories
-                                                                   WHERE is_done IS FALSE))
-                 AND NOT EXISTS(SELECT project_id
-                                FROM archived_projects
-                                WHERE project_id = p.id
-                                  AND user_id = $3)
-                 ${groupByClosure}`;
-
-    const result = await db.query(q, [teamId, userId, userId]);
-    const [row] = result.rows;
-    return row;
   }
 
   @HandleExceptions()

@@ -136,7 +136,7 @@ app.use((req, res, next) => {
 });
 
 // Set CSRF token method on request object for compatibility
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, _res: Response, next: NextFunction) => {
   // Add csrfToken method to request object for compatibility
   if (!req.csrfToken && generateToken) {
     req.csrfToken = (overwrite?: boolean) => generateToken(req, overwrite);
@@ -201,13 +201,14 @@ if (isInternalServer()) {
 }
 
 // CSRF error handler
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+app.use((err: unknown, _req: Request, res: Response, next: NextFunction): void => {
   if (err === invalidCsrfTokenError) {
-    return res.status(403).json({
+    res.status(403).json({
       done: false,
       message: "Invalid CSRF token",
       body: null
     });
+    return;
   }
   next(err);
 });

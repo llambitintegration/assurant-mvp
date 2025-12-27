@@ -54,7 +54,7 @@ export default class PtTaskStatusesController extends WorklenzControllerBase {
 
 
   @HandleExceptions()
-  public static async getCategories(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+  public static async getCategories(_req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     const q = `SELECT id, name, color_code, description
                FROM sys_task_status_categories
                ORDER BY index;`;

@@ -89,18 +89,6 @@ function nextChar(c: string) {
   return String.fromCharCode(c.charCodeAt(0) + 1);
 }
 
-function numberToAlpha(num: number) {
-  if (num < 1 || num > 26) {
-    throw new Error("Number must be between 1 and 26.");
-  }
-
-  // Convert the number to an ASCII code by adding 64
-  const asciiCode = num + 64;
-
-  // Convert the ASCII code to the corresponding character
-  return String.fromCharCode(asciiCode);
-}
-
 export function getColor(name?: string, next = false) {
   const char = name?.replace(/[^a-zA-Z0-9]/g, "").charAt(0).toUpperCase() || "A";
 

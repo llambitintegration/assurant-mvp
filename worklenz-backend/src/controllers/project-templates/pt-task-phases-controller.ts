@@ -4,7 +4,6 @@ import { IWorkLenzRequest } from "../../interfaces/worklenz-request";
 import { IWorkLenzResponse } from "../../interfaces/worklenz-response";
 import { ServerResponse } from "../../models/server-response";
 import { TASK_STATUS_COLOR_ALPHA } from "../../shared/constants";
-import { getColor } from "../../shared/utils";
 import WorklenzControllerBase from "../worklenz-controller-base";
 
 export default class PtTaskPhasesController extends WorklenzControllerBase {

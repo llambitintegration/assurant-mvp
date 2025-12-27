@@ -3,7 +3,6 @@ import axios from "axios";
 import { Request } from "express";
 import db from "../../config/db";
 import { log_error } from "../../shared/utils";
-import { ERROR_KEY } from "./passport-constants";
 
 interface GoogleTokenProfile {
   sub: string;

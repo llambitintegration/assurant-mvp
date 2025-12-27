@@ -5,7 +5,6 @@ import HandleExceptions from "../decorators/handle-exceptions";
 import { IWorkLenzRequest } from "../interfaces/worklenz-request";
 import { IWorkLenzResponse } from "../interfaces/worklenz-response";
 import { ServerResponse } from "../models/server-response";
-import { calculateNextEndDate, log_error } from "../shared/utils";
 
 export default class TaskRecurringController extends WorklenzControllerBase {
   @HandleExceptions()
@@ -70,39 +69,5 @@ export default class TaskRecurringController extends WorklenzControllerBase {
                       WHERE id = $9;`;
     await db.query(deleteQ, [schedule_type, days_of_week, date_of_month, day_of_month, week_of_month, interval_days, interval_weeks, interval_months, id]);
     return res.status(200).send(new ServerResponse(true, null));
-  }
-
-  // Function to create the next task in the recurring schedule
-  private static async createNextRecurringTask(scheduleId: string, lastTask: any, taskTemplate: any) {
-    try {
-      const q = "SELECT * FROM task_recurring_schedules WHERE id = $1";
-      const { rows: schedules } = await db.query(q, [scheduleId]);
-
-      if (schedules.length === 0) {
-        log_error("No schedule found");
-        return;
-      }
-
-      const [schedule] = schedules;
-
-      // Define the next start date based on the schedule
-      const nextStartDate = calculateNextEndDate(schedule, lastTask.start_date);
-
-      const result = await db.query(
-        `INSERT INTO tasks (name, start_date, end_date, priority_id, project_id, reporter_id, description, total_minutes, status_id, schedule_id)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id;`,
-        [
-          taskTemplate.name, nextStartDate, null, taskTemplate.priority_id,
-          lastTask.project_id, lastTask.reporter_id, taskTemplate.description,
-          0, taskTemplate.status_id, scheduleId
-        ]
-      );
-      const [data] = result.rows;
-
-      log_error(`Next task created with id: ${data.id}`);
-
-    } catch (error) {
-      log_error("Error creating next recurring task:", error);
-    }
   }
 }

@@ -136,7 +136,7 @@ export default class AdminCenterController extends WorklenzControllerBase {
   }
 
   @HandleExceptions()
-  public static async create(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+  public static async create(_req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     const q = ``;
     const result = await db.query(q, []);
     const [data] = result.rows;
@@ -584,7 +584,7 @@ export default class AdminCenterController extends WorklenzControllerBase {
   }
 
   @HandleExceptions()
-  public static async getCountries(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+  public static async getCountries(_req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     const q = `SELECT id, name, code
                FROM countries
                ORDER BY name;`;
@@ -731,7 +731,7 @@ export default class AdminCenterController extends WorklenzControllerBase {
   }
 
   @HandleExceptions()
-  public static async getFreePlanLimits(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+  public static async getFreePlanLimits(_req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     const limits = await getFreePlanSettings();
 
     return res.status(200).send(new ServerResponse(true, limits || {}));

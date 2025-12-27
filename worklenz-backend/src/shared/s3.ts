@@ -93,7 +93,7 @@ export async function deleteObject(key: string) {
   }
 }
 
-export async function calculateStorage(prefix: string) {
+export async function calculateStorage(prefix: string): Promise<number> {
   try {
     let totalSize = 0;
     let continuationToken;
@@ -121,6 +121,7 @@ export async function calculateStorage(prefix: string) {
     return totalSize;
   } catch (error) {
     log_error(error);
+    return 0;
   }
 }
 

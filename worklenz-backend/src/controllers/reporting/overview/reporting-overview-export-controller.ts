@@ -12,7 +12,7 @@ import { TASK_PRIORITY_COLOR_ALPHA } from "../../../shared/constants";
 export default class ReportingOverviewExportController extends ReportingOverviewBase {
 
   @HandleExceptions()
-  public static async getProjects(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+  public static async getProjects(req: IWorkLenzRequest, _res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     const { searchQuery, sortField, sortOrder, size, offset } = this.toPaginationOptions(req.query, ["p.name"]);
     const archived = req.query.archived === "true";
 
@@ -416,7 +416,7 @@ export default class ReportingOverviewExportController extends ReportingOverview
     const teamMemberName = (req.query.team_member_name as string)?.trim() || null;
     const teamName = (req.query.team_name as string)?.trim() || "";
 
-    const { duration, date_range, only_single_member, archived} = req.query;
+    const { duration, date_range, only_single_member } = req.query;
 
     const includeArchived = req.query.archived === "true";
 

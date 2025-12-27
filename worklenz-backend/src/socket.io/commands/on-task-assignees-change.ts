@@ -41,7 +41,7 @@ export async function on_task_assignees_change(
     }
 
     // Handle removed assignees
-    const removeResults = await Promise.all(
+    await Promise.all(
       removedAssignees.map(async (assignee) => {
         const data = {
           task_id: body.task_id,
@@ -78,7 +78,7 @@ export async function on_task_assignees_change(
     );
 
     // Handle new assignees
-    const addResults = await Promise.all(
+    await Promise.all(
       addedAssignees.map(async (assigneeId) => {
         const data = {
           task_id: body.task_id,

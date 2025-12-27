@@ -1,6 +1,5 @@
-import express, {Request, Response} from "express";
+import express from "express";
 
-import idParamValidator from "../../../middlewares/validators/id-param-validator";
 import safeControllerFunction from "../../../shared/safe-controller-function";
 import ScheduleControllerV2 from "../../../controllers/schedule-v2/schedule-controller";
 

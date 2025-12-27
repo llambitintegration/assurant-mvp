@@ -6,7 +6,6 @@ import { ServerResponse } from "../models/server-response";
 import WorklenzControllerBase from "./worklenz-controller-base";
 import HandleExceptions from "../decorators/handle-exceptions";
 import { getColor } from "../shared/utils";
-import moment from "moment";
 
 export default class GanttController extends WorklenzControllerBase {
   @HandleExceptions()

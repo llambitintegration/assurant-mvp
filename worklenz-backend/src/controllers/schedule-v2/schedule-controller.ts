@@ -1,34 +1,10 @@
 import db from "../../config/db";
-import { ParsedQs } from "qs";
 import HandleExceptions from "../../decorators/handle-exceptions";
 import { IWorkLenzRequest } from "../../interfaces/worklenz-request";
 import { IWorkLenzResponse } from "../../interfaces/worklenz-response";
 import { ServerResponse } from "../../models/server-response";
-import { TASK_PRIORITY_COLOR_ALPHA, TASK_STATUS_COLOR_ALPHA, UNMAPPED } from "../../shared/constants";
-import { getColor } from "../../shared/utils";
-import moment, { Moment } from "moment";
-import momentTime from "moment-timezone";
+import moment from "moment";
 import WorklenzControllerBase from "../worklenz-controller-base";
-
-interface IDateUnions {
-    date_union: {
-        start_date: string | null;
-        end_date: string | null;
-    },
-    logs_date_union: {
-        start_date: string | null;
-        end_date: string | null;
-    },
-    allocated_date_union: {
-        start_date: string | null;
-        end_date: string | null;
-    }
-}
-
-interface IDatesPair {
-    start_date: string | null,
-    end_date: string | null
-}
 
 export default class ScheduleControllerV2 extends WorklenzControllerBase {
 
@@ -400,7 +376,7 @@ export default class ScheduleControllerV2 extends WorklenzControllerBase {
                         project_id, team_member_id, allocated_from, allocated_to, seconds_per_day)
                         VALUES ($1, $2, $3, $4, $5);`;
 
-        const results = await db.query(getDataq, [project_id, team_member_id, allocated_from, allocated_to, Number(seconds_per_day) * 60 * 60]);
+        await db.query(getDataq, [project_id, team_member_id, allocated_from, allocated_to, Number(seconds_per_day) * 60 * 60]);
         return res.status(200).send(new ServerResponse(true, null, "Allocated successfully!"));
 
     }

@@ -8,7 +8,6 @@ import resetEmailValidator from "../../middlewares/validators/reset-email-valida
 import updatePasswordValidator from "../../middlewares/validators/update-password-validator";
 import passwordValidator from "../../middlewares/validators/password-validator";
 import safeControllerFunction from "../../shared/safe-controller-function";
-import FileConstants from "../../shared/file-constants";
 
 const authRouter = express.Router();
 

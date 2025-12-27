@@ -6,7 +6,6 @@ import { IWorkLenzRequest } from "../interfaces/worklenz-request";
 import { IWorkLenzResponse } from "../interfaces/worklenz-response";
 import { ServerResponse } from "../models/server-response";
 import {
-  TASK_PRIORITY_COLOR_ALPHA,
   TASK_STATUS_COLOR_ALPHA,
   UNMAPPED,
 } from "../shared/constants";

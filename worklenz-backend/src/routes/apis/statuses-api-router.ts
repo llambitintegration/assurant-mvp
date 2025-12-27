@@ -6,7 +6,6 @@ import idParamValidator from "../../middlewares/validators/id-param-validator";
 import statusDeleteValidator from "../../middlewares/validators/status-delete-validator";
 import statusOrderValidator from "../../middlewares/validators/status-order-validator";
 import taskStatusBodyValidator from "../../middlewares/validators/task-status-body-validator";
-import teamOwnerOrAdminValidator from "../../middlewares/validators/team-owner-or-admin-validator";
 import safeControllerFunction from "../../shared/safe-controller-function";
 import projectManagerValidator from "../../middlewares/validators/project-manager-validator";
 

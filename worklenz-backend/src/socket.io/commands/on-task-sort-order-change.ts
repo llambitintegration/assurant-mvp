@@ -86,7 +86,7 @@ function updateUnmappedStatus(config: Config) {
     config.from_group = null;
 }
 
-export async function on_task_sort_order_change(_io: Server, socket: Socket, data: ChangeRequest) {
+export async function on_task_sort_order_change(_io: Server, socket: Socket, data: ChangeRequest): Promise<void> {
   try {
     // New simplified approach - use bulk updates if provided
     if (data.task_updates && data.task_updates.length > 0) {
@@ -94,9 +94,10 @@ export async function on_task_sort_order_change(_io: Server, socket: Socket, dat
       if (data.group_by === GroupBy.STATUS && data.to_group) {
         const canContinue = await TasksControllerV2.checkForCompletedDependencies(data.task.id, data.to_group);
         if (!canContinue) {
-          return socket.emit(SocketEvents.TASK_SORT_ORDER_CHANGE.toString(), {
+          socket.emit(SocketEvents.TASK_SORT_ORDER_CHANGE.toString(), {
             completed_deps: canContinue
           });
+          return;
         }
       }
 
@@ -136,9 +137,10 @@ export async function on_task_sort_order_change(_io: Server, socket: Socket, dat
       if ((config.group_by === GroupBy.STATUS) && config.to_group) {
         const canContinue = await TasksControllerV2.checkForCompletedDependencies(config.task_id, config?.to_group);
         if (!canContinue) {
-          return socket.emit(SocketEvents.TASK_SORT_ORDER_CHANGE.toString(), {
+          socket.emit(SocketEvents.TASK_SORT_ORDER_CHANGE.toString(), {
             completed_deps: canContinue
           });
+          return;
         }
 
         notifyStatusChange(socket, config);

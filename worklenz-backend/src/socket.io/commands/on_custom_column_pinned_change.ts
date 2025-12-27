@@ -9,7 +9,7 @@ interface CustomColumnPinnedChangeData {
   is_visible: boolean;
 }
 
-export const  on_custom_column_pinned_change = async (io: Server, socket: Socket, data: string) => {
+export const  on_custom_column_pinned_change = async (_io: Server, socket: Socket, data: string) => {
   try {
     // Parse the data
     const parsedData: CustomColumnPinnedChangeData = typeof data === "string" ? JSON.parse(data) : data;

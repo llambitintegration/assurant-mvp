@@ -10,7 +10,7 @@ const router = express.Router({strict: false});
 
 const TEMPLATES_BASE = "../../worklenz-email-templates";
 
-router.get("/task-assignee-change", (req: IWorkLenzRequest, res: IWorkLenzResponse) => {
+router.get("/task-assignee-change", (_req: IWorkLenzRequest, res: IWorkLenzResponse) => {
   const sampleData = {
     "name": "Dinindu Wanniarachchi",
     "email": "dinindu.office@gmail.com",
@@ -50,7 +50,7 @@ router.get("/task-assignee-change", (req: IWorkLenzRequest, res: IWorkLenzRespon
   res.render(`${TEMPLATES_BASE}/email-notifications/task-assignee-change`, sampleData);
 });
 
-router.get("/daily-digest", (req: IWorkLenzRequest, res: IWorkLenzResponse) => {
+router.get("/daily-digest", (_req: IWorkLenzRequest, res: IWorkLenzResponse) => {
 
   const teams = [
     {
@@ -93,7 +93,7 @@ router.get("/daily-digest", (req: IWorkLenzRequest, res: IWorkLenzResponse) => {
   res.render(`${TEMPLATES_BASE}/email-notifications/daily-digest`, sampleData);
 });
 
-router.get("/task-moved-to-done", (req: IWorkLenzRequest, res: IWorkLenzResponse) => {
+router.get("/task-moved-to-done", (_req: IWorkLenzRequest, res: IWorkLenzResponse) => {
 
   const task = {
     name: "Soloman's Island Project - SIM Registration + Central DB + KYC",
@@ -112,7 +112,7 @@ router.get("/task-moved-to-done", (req: IWorkLenzRequest, res: IWorkLenzResponse
   res.render(`${TEMPLATES_BASE}/email-notifications/task-moved-to-done`, sampleData);
 });
 
-router.get("/project-daily-digest", (req: IWorkLenzRequest, res: IWorkLenzResponse) => {
+router.get("/project-daily-digest", (_req: IWorkLenzRequest, res: IWorkLenzResponse) => {
   const sampleData: IProjectDigest = {
     id: "",
     name: "Worklenz",
@@ -136,7 +136,7 @@ router.get("/project-daily-digest", (req: IWorkLenzRequest, res: IWorkLenzRespon
   res.render(`${TEMPLATES_BASE}/email-notifications/project-daily-digest`, sampleData);
 });
 
-router.get("/task-comment", (req: IWorkLenzRequest, res: IWorkLenzResponse) => {
+router.get("/task-comment", (_req: IWorkLenzRequest, res: IWorkLenzResponse) => {
   const data: ICommentEmailNotification = {
     greeting: "Hi Dinindu",
     summary: `"Dinindu Office" added a new comment on "Email Notifications"`,

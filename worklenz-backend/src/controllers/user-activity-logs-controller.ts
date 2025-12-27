@@ -7,7 +7,7 @@ import db from "../config/db";
 import { ServerResponse } from "../models/server-response";
 import WorklenzControllerBase from "./worklenz-controller-base";
 import HandleExceptions from "../decorators/handle-exceptions";
-import { formatDuration, formatLogText, getColor } from "../shared/utils";
+import { formatDuration } from "../shared/utils";
 
 interface IUserRecentTask {
     task_id: string;

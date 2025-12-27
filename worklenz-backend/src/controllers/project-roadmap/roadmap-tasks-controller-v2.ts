@@ -140,7 +140,7 @@ export default class RoadmapTasksControllerV2 extends RoadmapTasksControllerV2Ba
   }
 
 
-  private static getQuery(userId: string, options: ParsedQs) {
+  private static getQuery(_userId: string, options: ParsedQs) {
     const searchField = options.search ? "t.name" : "sort_order";
     const {searchQuery} = RoadmapTasksControllerV2.toPaginationOptions(options, searchField);
 
@@ -299,7 +299,7 @@ export default class RoadmapTasksControllerV2 extends RoadmapTasksControllerV2Ba
 
   public static updateMapByGroup(tasks: any[], groupBy: string, map: {
     [p: string]: IRMTaskGroup
-  }, expandedGroup: string, timeZone: string) {
+  }, _expandedGroup: string, timeZone: string) {
     let index = 0;
     const unmapped = [];
     for (const task of tasks) {

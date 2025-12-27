@@ -32,7 +32,7 @@ export default abstract class ProjectTemplatesControllerBase extends WorklenzCon
   @HandleExceptions()
   protected static async insertTemplateProjectStatuses(body: IProjectTemplateStatus[], template_id: string) {
     for await (const status of body) {
-      const { name, category_name, category_id } = status;
+      const { name, category_name, category_id: _category_id } = status;
 
       const q = `INSERT INTO pt_statuses(name, template_id, category_id)
                     VALUES ($1, $2, (SELECT id FROM sys_task_status_categories WHERE sys_task_status_categories.name = $3));`;
@@ -416,7 +416,7 @@ export default abstract class ProjectTemplatesControllerBase extends WorklenzCon
   }
 
   @HandleExceptions()
-  protected static async insertCustomTemplateTasks(body: IProjectTemplateTask[], template_id: string, team_id: string, status = true) {
+  protected static async insertCustomTemplateTasks(body: IProjectTemplateTask[], template_id: string, team_id: string, _status = true) {
     for await (const task of body) {
       const { name, description, total_minutes, sort_order, priority_id, status_name, task_no, parent_task_id, id, phase_name } = task;
 
@@ -466,7 +466,7 @@ export default abstract class ProjectTemplatesControllerBase extends WorklenzCon
 
 
   @HandleExceptions()
-  protected static async handleAccountSetup(project_id: string, user_id: string, team_name: string) {
+  protected static async handleAccountSetup(_project_id: string, user_id: string, team_name: string) {
     // update user setup status
     await db.query(`UPDATE users SET setup_completed = TRUE WHERE id = $1;`, [user_id]);
 

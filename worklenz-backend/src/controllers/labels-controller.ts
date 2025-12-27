@@ -5,7 +5,7 @@ import db from "../config/db";
 import {ServerResponse} from "../models/server-response";
 import WorklenzControllerBase from "./worklenz-controller-base";
 import HandleExceptions from "../decorators/handle-exceptions";
-import {TASK_PRIORITY_COLOR_ALPHA, WorklenzColorCodes, WorklenzColorShades} from "../shared/constants";
+import {TASK_PRIORITY_COLOR_ALPHA, WorklenzColorShades} from "../shared/constants";
 
 export default class LabelsController extends WorklenzControllerBase {
   @HandleExceptions()

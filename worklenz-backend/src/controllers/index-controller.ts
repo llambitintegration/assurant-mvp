@@ -8,7 +8,7 @@ import db from "../config/db";
 import createHttpError from "http-errors";
 
 export default class IndexController extends WorklenzControllerBase {
-  public static use(req: IWorkLenzRequest, res: IWorkLenzResponse, next: NextFunction) {
+  public static use(req: IWorkLenzRequest, res: IWorkLenzResponse, next: NextFunction): void {
     try {
       const url = `https://${req.hostname}${req.url}`;
       res.locals.release = FileConstants.getRelease();
@@ -23,26 +23,26 @@ export default class IndexController extends WorklenzControllerBase {
     next();
   }
 
-  public static async index(req: IWorkLenzRequest, res: IWorkLenzResponse) {
+  public static async index(_req: IWorkLenzRequest, res: IWorkLenzResponse) {
     const q = `SELECT free_tier_storage, team_member_limit, projects_limit, trial_duration FROM licensing_settings;`;
     const result = await db.query(q, []);
     const [settings] = result.rows;
     res.render("index", {settings});
   }
 
-  public static pricing(req: IWorkLenzRequest, res: IWorkLenzResponse) {
+  public static pricing(_req: IWorkLenzRequest, res: IWorkLenzResponse): void {
     res.render("pricing");
   }
 
-  public static privacyPolicy(req: IWorkLenzRequest, res: IWorkLenzResponse) {
+  public static privacyPolicy(_req: IWorkLenzRequest, res: IWorkLenzResponse): void {
     res.render("privacy-policy");
   }
 
-  public static termsOfUse(req: IWorkLenzRequest, res: IWorkLenzResponse) {
+  public static termsOfUse(_req: IWorkLenzRequest, res: IWorkLenzResponse): void {
     res.render("terms-of-use");
   }
 
-  public static admin(req: IWorkLenzRequest, res: IWorkLenzResponse) {
+  public static admin(_req: IWorkLenzRequest, res: IWorkLenzResponse): void {
     res.render("admin");
   }
 
@@ -62,7 +62,7 @@ export default class IndexController extends WorklenzControllerBase {
     return res.redirect(301, "/auth");
   }
 
-  public static redirectToLogin(req: IWorkLenzRequest, res: IWorkLenzResponse) {
+  public static redirectToLogin(_req: IWorkLenzRequest, res: IWorkLenzResponse): void {
     res.redirect("/auth/login");
   }
 
@@ -100,7 +100,7 @@ export default class IndexController extends WorklenzControllerBase {
     return res.render("admin");
   }
 
-  public static async getHealth(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+  public static async getHealth(_req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     try {
       const start = Date.now();
       await db.query('SELECT 1');
@@ -114,12 +114,13 @@ export default class IndexController extends WorklenzControllerBase {
         },
         timestamp: new Date().toISOString()
       });
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return res.status(503).json({
         status: 'unhealthy',
         database: {
           connected: false,
-          error: error.message
+          error: errorMessage
         },
         timestamp: new Date().toISOString()
       });

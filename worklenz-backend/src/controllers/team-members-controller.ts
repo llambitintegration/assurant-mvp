@@ -912,7 +912,6 @@ export default class TeamMembersController extends WorklenzControllerBase {
 
     const exportDate = moment().format("MMM-DD-YYYY");
     const fileName = `Worklenz - Team Members Export - ${exportDate}`;
-    const metadata = {};
     const title = "";
 
     const workbook = new Excel.Workbook();
@@ -987,7 +986,7 @@ export default class TeamMembersController extends WorklenzControllerBase {
   }
 
   @HandleExceptions()
-  public static async exportByMember(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<void> {
+  public static async exportByMember(_req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<void> {
     const exportDate = moment().format("MMM-DD-YYYY");
     const fileName = `Team Members - ${exportDate}`;
     const title = "";
@@ -1045,7 +1044,7 @@ export default class TeamMembersController extends WorklenzControllerBase {
       // }
     } else {
 
-      const userExists = await this.checkIfUserActiveInOtherTeams(req.user?.owner_id as string, req.query?.email as string);
+      await this.checkIfUserActiveInOtherTeams(req.user?.owner_id as string, req.query?.email as string);
 
       // if (subscriptionData.status === "trialing") break;
       // if (!userExists && !subscriptionData.is_credit && !subscriptionData.is_custom) {

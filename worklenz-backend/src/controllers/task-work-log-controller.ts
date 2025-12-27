@@ -5,7 +5,7 @@ import {IWorkLenzRequest} from "../interfaces/worklenz-request";
 import {IWorkLenzResponse} from "../interfaces/worklenz-response";
 
 import db from "../config/db";
-import {formatDuration, getColor, log_error, toSeconds} from "../shared/utils";
+import {formatDuration, getColor} from "../shared/utils";
 import {ServerResponse} from "../models/server-response";
 import WorklenzControllerBase from "./worklenz-controller-base";
 import HandleExceptions from "../decorators/handle-exceptions";
@@ -15,7 +15,7 @@ export default class TaskWorklogController extends WorklenzControllerBase {
 
   @HandleExceptions()
   public static async create(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const {id, seconds_spent, description, created_at, formatted_start} = req.body;
+    const {id, seconds_spent, description, formatted_start} = req.body;
     const q = `INSERT INTO task_work_log (time_spent, description, task_id, user_id, created_at)
                VALUES ($1, $2, $3, $4, $5);`;
     const params = [seconds_spent, description, id, req.user?.id, formatted_start];
@@ -79,7 +79,7 @@ export default class TaskWorklogController extends WorklenzControllerBase {
 
   @HandleExceptions()
   public static async update(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const {seconds_spent, description, created_at, formatted_start} = req.body;
+    const {seconds_spent, description, formatted_start} = req.body;
     const q = `
       UPDATE task_work_log
       SET time_spent  = $3,

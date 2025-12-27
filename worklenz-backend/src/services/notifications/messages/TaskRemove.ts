@@ -1,6 +1,6 @@
 import {INotification} from "../interfaces";
 
-class TaskRemove implements INotification {
+export class TaskRemove implements INotification {
   private template = `<user> removed "<task>" from the "<project>".`;
   user_ids!: string[];
   message!: string;
