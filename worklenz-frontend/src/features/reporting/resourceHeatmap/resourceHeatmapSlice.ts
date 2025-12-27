@@ -171,9 +171,16 @@ const resourceHeatmapSlice = createSlice({
       })
       .addCase(fetchHeatmapData.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.resources = action.payload.resources || [];
-        state.periodLabels = action.payload.period_labels || [];
-        state.total = action.payload.total || 0;
+        if (action.payload) {
+          state.resources = action.payload.resources || [];
+          state.periodLabels = action.payload.period_labels || [];
+          state.total = action.payload.total || 0;
+        } else {
+          state.resources = [];
+          state.periodLabels = [];
+          state.total = 0;
+          state.error = 'No data received from server';
+        }
       })
       .addCase(fetchHeatmapData.rejected, (state, action) => {
         state.isLoading = false;
