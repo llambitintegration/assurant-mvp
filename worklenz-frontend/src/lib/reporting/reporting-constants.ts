@@ -6,6 +6,7 @@ const OverviewTimeReports = lazy(() => import('@/pages/reporting/timeReports/ove
 const ProjectsTimeReports = lazy(() => import('@/pages/reporting/timeReports/projects-time-reports'));
 const MembersTimeReports = lazy(() => import('@/pages/reporting/timeReports/members-time-reports'));
 const EstimatedVsActualTimeReports = lazy(() => import('@/pages/reporting/timeReports/estimated-vs-actual-time-reports'));
+const ResourceHeatmap = lazy(() => import('@/pages/reporting/resource-heatmap/resource-heatmap'));
 
 // Type definition for a menu item
 export type ReportingMenuItems = {
@@ -35,6 +36,12 @@ export const reportingsItems: ReportingMenuItems[] = [
     name: 'members',
     endpoint: 'members',
     element: React.createElement(MembersReports),
+  },
+  {
+    key: 'resource-heatmap',
+    name: 'resourceHeatmap',
+    endpoint: 'resource-heatmap',
+    element: React.createElement(ResourceHeatmap),
   },
   {
     key: 'time-sheet',

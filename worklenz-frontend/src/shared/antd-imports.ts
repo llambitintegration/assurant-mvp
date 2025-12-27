@@ -65,7 +65,8 @@ import {
   Timeline,
   Mentions,
   Radio,
-  Steps
+  Steps,
+  Descriptions
 } from 'antd/es';
 
 // Icons - Import commonly used ones
@@ -91,6 +92,8 @@ export {
   LeftOutlined,
   UpOutlined,
   ArrowLeftOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
   BellFilled,
   BellOutlined,
   SaveOutlined,
@@ -242,7 +245,8 @@ export {
   Timeline,
   Mentions,
   Radio,
-  Steps
+  Steps,
+  Descriptions
 };
 
 // TypeScript Types - Import commonly used ones

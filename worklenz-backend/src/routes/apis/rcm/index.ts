@@ -3,6 +3,7 @@ import resourcesApiRouter from "./resources-api-router";
 import departmentsApiRouter from "./departments-api-router";
 import allocationsApiRouter from "./allocations-api-router";
 import availabilityApiRouter from "./availability-api-router";
+import heatmapApiRouter from "./heatmap-api-router";
 
 const rcmRouter = express.Router();
 
@@ -18,6 +19,9 @@ rcmRouter.use("/allocations", allocationsApiRouter);
 // Availability and Unavailability endpoints
 // Note: This router handles both /availability and /unavailability paths
 rcmRouter.use("/", availabilityApiRouter);
+
+// Heatmap endpoints
+rcmRouter.use("/heatmap", heatmapApiRouter);
 
 // Future RCM routers will be added here:
 // rcmRouter.use("/skills", skillsApiRouter);

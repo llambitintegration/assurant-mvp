@@ -72,6 +72,7 @@ import projectReportsTableColumnsReducer from '../features/reporting/projectRepo
 import projectReportsReducer from '../features/reporting/projectReports/project-reports-slice';
 import membersReportsReducer from '../features/reporting/membersReports/membersReportsSlice';
 import timeReportsOverviewReducer from '@features/reporting/time-reports/time-reports-overview.slice';
+import resourceHeatmapReducer from '@features/reporting/resourceHeatmap/resourceHeatmapSlice';
 
 import roadmapReducer from '../features/roadmap/roadmap-slice';
 import teamMembersReducer from '@features/team-members/team-members.slice';
@@ -173,6 +174,7 @@ export const store = configureStore({
     roadmapReducer: roadmapReducer,
     groupByFilterDropdownReducer: groupByFilterDropdownReducer,
     timeReportsOverviewReducer: timeReportsOverviewReducer,
+    resourceHeatmapReducer: resourceHeatmapReducer,
 
     // Task Management System
     taskManagement: taskManagementReducer,
