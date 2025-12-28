@@ -26,9 +26,10 @@ const createMockPrismaModel = () => ({
 });
 
 /**
- * Mock Prisma client with all RCM models
+ * Mock Prisma client with all RCM and Inventory models
  */
 const prismaMock = {
+  // RCM models
   rcm_resources: createMockPrismaModel(),
   rcm_allocations: createMockPrismaModel(),
   rcm_availability: createMockPrismaModel(),
@@ -37,6 +38,13 @@ const prismaMock = {
   rcm_resource_skills: createMockPrismaModel(),
   rcm_departments: createMockPrismaModel(),
   rcm_resource_department_assignments: createMockPrismaModel(),
+  // Inventory models
+  inv_suppliers: createMockPrismaModel(),
+  inv_storage_locations: createMockPrismaModel(),
+  inv_components: createMockPrismaModel(),
+  inv_transactions: createMockPrismaModel(),
+  inv_barcode_mappings: createMockPrismaModel(),
+  // Prisma client methods
   $queryRaw: jest.fn(),
   $executeRaw: jest.fn(),
   $transaction: jest.fn(),

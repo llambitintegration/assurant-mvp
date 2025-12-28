@@ -63,6 +63,7 @@ import userActivityLogsApiRouter from "./user-activity-logs-api-router";
 import supportApiRouter from "./support-api-router";
 import accountApiRouter from "./account-api-router";
 import rcmRouter from "./rcm";
+import invRouter from "./inv";
 
 const api = express.Router();
 
@@ -126,6 +127,7 @@ api.use("/custom-columns", customColumnsApiRouter);
 api.use("/support", supportApiRouter);
 api.use("/account", accountApiRouter);
 api.use("/rcm", rcmRouter);
+api.use("/inv", invRouter);
 
 api.use("/logs", userActivityLogsApiRouter);
 export default api;

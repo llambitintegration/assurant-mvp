@@ -35,6 +35,25 @@ enum rcm_unavailability_type {
   other
 }
 
+enum inv_transaction_type {
+  IN
+  OUT
+  ADJUST
+}
+
+enum inv_owner_type {
+  supplier
+  storage_location
+}
+
+enum inv_barcode_type {
+  QR_CODE
+  BARCODE_128
+  BARCODE_39
+  EAN_13
+  UPC_A
+}
+
 // ============================================================================
 // REFERENCED WORKLENZ TABLES (with @@ignore)
 // ============================================================================
@@ -243,5 +262,144 @@ model rcm_allocations {
   @@index([project_id])
   @@index([start_date])
   @@index([end_date])
+  @@index([is_active])
+}
+
+// ============================================================================
+// INVENTORY MANAGEMENT TABLES
+// ============================================================================
+
+model inv_suppliers {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name        String   @db.VarChar(200)
+  contact_person String? @db.VarChar(100)
+  email       String?  @db.VarChar(255)
+  phone       String?  @db.VarChar(50)
+  address     String?  @db.Text
+  notes       String?  @db.Text
+  team_id     String   @db.Uuid
+  created_by  String   @db.Uuid
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active   Boolean  @default(true)
+
+  // Relations
+  components inv_components[]
+
+  @@index([team_id])
+  @@index([is_active])
+  @@index([name])
+}
+
+model inv_storage_locations {
+  id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  location_code    String   @db.VarChar(50)
+  name             String   @db.VarChar(200)
+  description      String?  @db.Text
+  parent_location_id String? @db.Uuid
+  team_id          String   @db.Uuid
+  created_by       String   @db.Uuid
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active        Boolean  @default(true)
+
+  // Relations
+  parent_location   inv_storage_locations?  @relation("LocationHierarchy", fields: [parent_location_id], references: [id], onDelete: Cascade)
+  child_locations   inv_storage_locations[] @relation("LocationHierarchy")
+  components        inv_components[]
+
+  @@index([team_id])
+  @@index([parent_location_id])
+  @@index([is_active])
+  @@index([location_code])
+}
+
+model inv_components {
+  id                  String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                String         @db.VarChar(200)
+  sku                 String?        @db.VarChar(100)
+  description         String?        @db.Text
+  category            String?        @db.VarChar(100)
+
+  // Polymorphic ownership
+  owner_type          inv_owner_type
+  supplier_id         String?        @db.Uuid
+  storage_location_id String?        @db.Uuid
+
+  // Inventory tracking
+  quantity            Int            @default(0)
+  unit                String?        @db.VarChar(50)
+  unit_cost           Decimal?       @db.Decimal(10, 2)
+  reorder_level       Int?           @default(0)
+
+  // QR Code data
+  qr_code_data        String?        @db.Text
+  qr_code_image       String?        @db.Text  // Base64 encoded image
+
+  team_id             String         @db.Uuid
+  created_by          String         @db.Uuid
+  created_at          DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime       @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active           Boolean        @default(true)
+
+  // Relations
+  supplier         inv_suppliers?         @relation(fields: [supplier_id], references: [id], onDelete: SetNull)
+  storage_location inv_storage_locations? @relation(fields: [storage_location_id], references: [id], onDelete: SetNull)
+  transactions     inv_transactions[]
+  barcode_mappings inv_barcode_mappings[]
+
+  @@index([team_id])
+  @@index([supplier_id])
+  @@index([storage_location_id])
+  @@index([is_active])
+  @@index([sku])
+  @@index([category])
+  @@index([owner_type])
+}
+
+model inv_transactions {
+  id               String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  component_id     String               @db.Uuid
+  transaction_type inv_transaction_type
+  quantity         Int
+  quantity_before  Int
+  quantity_after   Int
+  unit_cost        Decimal?             @db.Decimal(10, 2)
+  reference_number String?              @db.VarChar(100)
+  notes            String?              @db.Text
+  transaction_date DateTime             @default(now()) @db.Timestamptz(6)
+  team_id          String               @db.Uuid
+  created_by       String               @db.Uuid
+  created_at       DateTime             @default(now()) @db.Timestamptz(6)
+  is_active        Boolean              @default(true)
+
+  // Relations
+  component inv_components @relation(fields: [component_id], references: [id], onDelete: Cascade)
+
+  @@index([team_id])
+  @@index([component_id])
+  @@index([transaction_type])
+  @@index([transaction_date])
+  @@index([is_active])
+}
+
+model inv_barcode_mappings {
+  id           String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  component_id String          @db.Uuid
+  barcode_type inv_barcode_type
+  barcode_data String          @db.Text
+  team_id      String          @db.Uuid
+  created_by   String          @db.Uuid
+  created_at   DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime        @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active    Boolean         @default(true)
+
+  // Relations
+  component inv_components @relation(fields: [component_id], references: [id], onDelete: Cascade)
+
+  @@unique([component_id, barcode_type])
+  @@index([team_id])
+  @@index([component_id])
+  @@index([barcode_type])
   @@index([is_active])
 }

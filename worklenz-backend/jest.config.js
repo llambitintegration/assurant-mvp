@@ -54,6 +54,48 @@ module.exports = {
       functions: 100,
       lines: 100,
       statements: 100
+    },
+    './src/services/inv/suppliers-service.ts': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90
+    },
+    './src/services/inv/locations-service.ts': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90
+    },
+    './src/services/inv/components-service.ts': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90
+    },
+    './src/services/inv/transactions-service.ts': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90
+    },
+    './src/services/inv/qr-service.ts': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90
+    },
+    './src/services/inv/csv-import-service.ts': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90
+    },
+    './src/services/inv/dashboard-service.ts': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90
     }
   },
 
