@@ -278,12 +278,8 @@
   padding: 0;
 }
 
-/* Font display optimization */
-@font-face {
-  font-family: 'Inter';
-  font-display: swap;
-  src: url('/fonts/inter-var.woff2') format('woff2');
-}
+/* Font display optimization - Using Google Fonts instead of local font */
+/* The Inter font is loaded from Google Fonts in index.html */
 
 /* Critical animations only */
 @keyframes fadeIn {

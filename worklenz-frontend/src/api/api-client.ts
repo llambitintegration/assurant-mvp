@@ -150,7 +150,7 @@ apiClient.interceptors.response.use(
     const errorMessage = message || 'An unexpected error occurred';
     const errorTitle = 'Error';
 
-    if (error.code !== 'ERR_NETWORK') {
+    if (error.code !== 'ERR_NETWORK' && error.response?.status !== 404) {
       alertService.error(errorTitle, errorMessage);
     }
 
