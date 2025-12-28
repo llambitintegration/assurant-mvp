@@ -30,4 +30,10 @@ export const navRoutes: NavRoutesType[] = [
     adminOnly: true,
     freePlanFeature: false,
   },
+  {
+    name: 'inventory',
+    path: '/worklenz/inventory/dashboard',
+    adminOnly: true,
+    freePlanFeature: false,
+  },
 ];

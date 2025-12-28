@@ -89,6 +89,14 @@ import { userActivityApiService } from '@/api/home-page/user-activity.api.servic
 import projectViewReducer from '@features/project/project-view-slice';
 import taskManagementFieldsReducer from '@features/task-management/taskListFields.slice';
 
+// Inventory Management System
+import suppliersReducer from '@features/inventory/suppliers/suppliersSlice';
+import storageLocationsReducer from '@features/inventory/storageLocations/storageLocationsSlice';
+import componentsReducer from '@features/inventory/components/componentsSlice';
+import transactionsReducer from '@features/inventory/transactions/transactionsSlice';
+import dashboardReducer from '@features/inventory/dashboard/dashboardSlice';
+import csvImportReducer from '@features/inventory/csvImport/csvImportSlice';
+
 export const store = configureStore({
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware({
@@ -181,6 +189,14 @@ export const store = configureStore({
     grouping: groupingReducer,
     taskManagementSelection: selectionReducer,
     taskManagementFields: taskManagementFieldsReducer,
+
+    // Inventory Management System
+    inventorySuppliers: suppliersReducer,
+    inventoryStorageLocations: storageLocationsReducer,
+    inventoryComponents: componentsReducer,
+    inventoryTransactions: transactionsReducer,
+    inventoryDashboard: dashboardReducer,
+    inventoryCsvImport: csvImportReducer,
   },
 });
 

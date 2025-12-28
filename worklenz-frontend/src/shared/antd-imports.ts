@@ -66,7 +66,9 @@ import {
   Mentions,
   Radio,
   Steps,
-  Descriptions
+  Descriptions,
+  Tree,
+  Upload
 } from 'antd/es';
 
 // Icons - Import commonly used ones
@@ -148,6 +150,7 @@ export {
   CaretRightOutlined,
   CaretUpOutlined,
   QuestionCircleOutlined,
+  QrcodeOutlined,
   CloseCircleFilled,
   PlusCircleOutlined,
   WifiOutlined,
@@ -186,7 +189,10 @@ export {
   WarningTwoTone,
   ShareAltOutlined,
   CloudDownloadOutlined,
-  CopyOutlined
+  CopyOutlined,
+  DollarOutlined,
+  ShopOutlined,
+  WarningOutlined
 } from '@ant-design/icons';
 
 // Re-export all components with React
@@ -246,7 +252,9 @@ export {
   Mentions,
   Radio,
   Steps,
-  Descriptions
+  Descriptions,
+  Tree,
+  Upload
 };
 
 // TypeScript Types - Import commonly used ones
@@ -270,6 +278,7 @@ export type {
   PaginationProps,
   CollapseProps,
   TablePaginationConfig,
+  UploadProps,
 } from 'antd/es';
 
 // Dayjs
