@@ -57,3 +57,12 @@ externalPort = 80
 deploymentTarget = "vm"
 run = ["bash", "-c", "cd worklenz-backend && node build/bin/www.js"]
 build = ["bash", "-c", "cd worklenz-frontend && npm run build && cd ../worklenz-backend && npm run build"]
+
+[rules]
+
+[rules.formatter]
+
+[rules.formatter.fileExtensions]
+
+[rules.formatter.fileExtensions.".ts"]
+id = "module:nodejs-20/formatter:prettier"
