@@ -51,32 +51,41 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 });
 
 // CORS configuration
+const getReplitOrigins = (): string[] => {
+  const origins: string[] = [];
+  const replitDomains = process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN;
+  if (replitDomains) {
+    replitDomains.split(',').forEach(domain => {
+      const cleanDomain = domain.trim();
+      if (cleanDomain) {
+        origins.push(`https://${cleanDomain}`);
+        origins.push(`http://${cleanDomain}`);
+      }
+    });
+  }
+  return origins;
+};
+
 const allowedOrigins = [
-  isProduction() 
-    ? [
-        `http://localhost:5000`,
-        `http://127.0.0.1:5000`,
-        process.env.SERVER_CORS || "",  // Add hostname from env
-        process.env.FRONTEND_URL || ""  // Support FRONTEND_URL as well
-      ].filter(Boolean)  // Remove empty strings
-    : [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5000",
-        `http://localhost:5000`,
-        process.env.SERVER_CORS || "",  // Add hostname from env
-        process.env.FRONTEND_URL || ""  // Support FRONTEND_URL as well
-      ].filter(Boolean)  // Remove empty strings
-].flat();
+  "http://localhost:3000",
+  "http://localhost:5000",
+  "http://localhost:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5000",
+  "http://127.0.0.1:5173",
+  process.env.SERVER_CORS || "",
+  process.env.FRONTEND_URL || "",
+  ...getReplitOrigins(),
+].filter(Boolean);
+
+const isWildcardCors = process.env.SERVER_CORS === '*';
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!isProduction() || !origin || allowedOrigins.includes(origin)) {
+    if (isWildcardCors || !isProduction() || !origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.log("Blocked origin:", origin, process.env.NODE_ENV);
+      console.log("Blocked origin:", origin, "Allowed:", allowedOrigins);
       callback(new Error("Not allowed by CORS"));
     }
   },
