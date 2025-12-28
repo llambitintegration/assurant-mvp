@@ -1,0 +1,345 @@
+059 |   users      users      @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_categories_created_by_fk")
+1060 |   teams      teams      @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_categories_team_id_fk")
+1061 |   projects   projects[]
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `project_categories` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1061
+   | 
+1060 |   teams      teams      @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_categories_team_id_fk")
+1061 |   projects   projects[]
+1062 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `project_comments` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1089
+   | 
+1088 |   project_comment_mentions project_comment_mentions[] @ignore
+1089 |   users                    users                      @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_comments_created_by_fk")
+1090 |   projects                 projects                   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_comments_project_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `project_comments` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1090
+   | 
+1089 |   users                    users                      @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_comments_created_by_fk")
+1090 |   projects                 projects                   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_comments_project_id_fk")
+1091 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `project_folders` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1105
+   | 
+1104 |   updated_at            DateTime          @default(now()) @db.Timestamptz(6)
+1105 |   users                 users             @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_folders_created_by_fk")
+1106 |   project_folders       project_folders?  @relation("project_foldersToproject_folders", fields: [parent_folder_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_folders_parent_folder_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `project_folders` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1108
+   | 
+1107 |   other_project_folders project_folders[] @relation("project_foldersToproject_folders")
+1108 |   teams                 teams             @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_folders_team_id_fk")
+1109 |   projects              projects[]
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `project_folders` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1109
+   | 
+1108 |   teams                 teams             @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_folders_team_id_fk")
+1109 |   projects              projects[]
+1110 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `project_logs` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1121
+   | 
+1120 |   created_at  DateTime @default(now()) @db.Timestamptz(6)
+1121 |   projects    projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_logs_projects_id_fk")
+1122 |   teams       teams    @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_logs_teams_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `project_logs` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1122
+   | 
+1121 |   projects    projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_logs_projects_id_fk")
+1122 |   teams       teams    @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_logs_teams_id_fk")
+1123 | }
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `project_member_allocations` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1132
+   | 
+1131 |   seconds_per_day Int?
+1132 |   projects        projects     @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_members_allocations_project_id_fk")
+1133 |   team_members    team_members @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_members_allocations_team_member_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `project_members` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1145
+   | 
+1144 |   project_access_levels   project_access_levels @relation(fields: [project_access_level_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_members_access_level_fk")
+1145 |   projects                projects              @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_members_project_id_fk")
+1146 |   roles                   roles                 @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_members_role_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `project_phases` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1165
+   | 
+1164 |   sort_index Int?         @default(0)
+1165 |   projects   projects     @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_phases_project_id_fk")
+1166 |   task_phase task_phase[] @ignore
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `project_subscribers` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1178
+   | 
+1177 |   created_at     DateTime     @default(now()) @db.Timestamptz(6)
+1178 |   projects       projects     @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_subscribers_project_id_fk")
+1179 |   team_members   team_members @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_subscribers_team_member_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `project_subscribers` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1180
+   | 
+1179 |   team_members   team_members @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_subscribers_team_member_id_fk")
+1180 |   users          users        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_subscribers_user_id_fk")
+1181 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `project_task_list_cols` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1194
+   | 
+1193 |   custom_column_obj Json?
+1194 |   projects          projects             @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_task_list_cols_project_fk")
+1195 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `pt_task_statuses` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1270
+   | 
+1269 |   sys_task_status_categories sys_task_status_categories @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "pt_task_statuses_category_id_fk")
+1270 |   teams                      teams                      @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "pt_task_statuses_team_id_fk")
+1271 |   pt_project_templates       pt_project_templates       @relation(fields: [template_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "pt_task_statuses_template_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `survey_responses` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1373
+   | 
+1372 |   surveys        surveys          @relation(fields: [survey_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+1373 |   users          users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+1374 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `task_activity_logs` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1451
+   | 
+1450 |   project_id     String   @db.Uuid
+1451 |   projects       projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_activity_logs_projects_id_fk")
+1452 |   tasks          tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_activity_logs_tasks_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `task_activity_logs` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1453
+   | 
+1452 |   tasks          tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_activity_logs_tasks_id_fk")
+1453 |   teams          teams    @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_activity_logs_team_id_fk")
+1454 |   users          users    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_activity_logs_users_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `task_activity_logs` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1454
+   | 
+1453 |   teams          teams    @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_activity_logs_team_id_fk")
+1454 |   users          users    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_activity_logs_users_id_fk")
+1455 | }
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `task_attachments` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1468
+   | 
+1467 |   created_at  DateTime @default(now()) @db.Timestamptz(6)
+1468 |   projects    projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_attachments_project_id_fk")
+1469 |   tasks       tasks?   @relation(fields: [task_id], references: [id], onUpdate: NoAction, map: "task_attachments_task_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `task_attachments` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1470
+   | 
+1469 |   tasks       tasks?   @relation(fields: [task_id], references: [id], onUpdate: NoAction, map: "task_attachments_task_id_fk")
+1470 |   teams       teams    @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_attachments_team_id_fk")
+1471 |   users       users    @relation(fields: [uploaded_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_attachments_uploaded_by_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `task_attachments` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1471
+   | 
+1470 |   teams       teams    @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_attachments_team_id_fk")
+1471 |   users       users    @relation(fields: [uploaded_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_attachments_uploaded_by_fk")
+1472 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `task_comment_attachments` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1488
+   | 
+1487 |   task_comments task_comments @relation(fields: [comment_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_attachments_comment_id_fk")
+1488 |   projects      projects      @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_attachments_project_id_fk")
+1489 |   tasks         tasks         @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_attachments_task_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `task_comment_attachments` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1490
+   | 
+1489 |   tasks         tasks         @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_attachments_task_id_fk")
+1490 |   teams         teams         @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_attachments_team_id_fk")
+1491 | }
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `task_comment_reactions` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1529
+   | 
+1528 |   team_members   team_members   @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_reactions_team_member_id_fk")
+1529 |   users          users          @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_comment_reactions_user_id_fk")
+1530 | }
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `task_comments` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1546
+   | 
+1545 |   team_members             team_members               @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comments_team_member_id_fk")
+1546 |   users                    users                      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comments_user_id_fk")
+1547 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `task_statuses` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1644
+   | 
+1643 |   sys_task_status_categories sys_task_status_categories @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_statuses_category_id_fk")
+1644 |   projects                   projects                   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_statuses_project_id_fk")
+1645 |   teams                      teams                      @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_statuses_team_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `task_statuses` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1645
+   | 
+1644 |   projects                   projects                   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_statuses_project_id_fk")
+1645 |   teams                      teams                      @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_statuses_team_id_fk")
+1646 |   tasks                      tasks[]
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `task_subscribers` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1662
+   | 
+1661 |   team_members   team_members @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_subscribers_team_member_id_fk")
+1662 |   users          users        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_subscribers_user_id_fk")
+1663 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `task_templates` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1673
+   | 
+1672 |   updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+1673 |   teams                teams                  @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_templates_teams_id_fk")
+1674 |   task_templates_tasks task_templates_tasks[] @ignore
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `task_timers` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1692
+   | 
+1691 |   tasks      tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_timers_task_id_fk")
+1692 |   users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_timers_user_id_fk")
+1693 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `task_updates` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1711
+   | 
+1710 |   retry_count                           Int?     @default(0)
+1711 |   projects                              projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_project_id_fk")
+1712 |   users_task_updates_reporter_idTousers users    @relation("task_updates_reporter_idTousers", fields: [reporter_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_reporter_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `users_task_updates_reporter_idTousers` on Model `task_updates` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1712
+   | 
+1711 |   projects                              projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_project_id_fk")
+1712 |   users_task_updates_reporter_idTousers users    @relation("task_updates_reporter_idTousers", fields: [reporter_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_reporter_id_fk")
+1713 |   tasks                                 tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_task_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `task_updates` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1714
+   | 
+1713 |   tasks                                 tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_task_id_fk")
+1714 |   teams                                 teams    @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_team_id_fk")
+1715 |   users_task_updates_user_idTousers     users    @relation("task_updates_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_user_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `users_task_updates_user_idTousers` on Model `task_updates` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1715
+   | 
+1714 |   teams                                 teams    @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_team_id_fk")
+1715 |   users_task_updates_user_idTousers     users    @relation("task_updates_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_user_id_fk")
+1716 | }
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `task_work_log` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1729
+   | 
+1728 |   tasks           tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_work_log_task_id_fk")
+1729 |   users           users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_work_log_users_id_fk")
+1730 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `tasks` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1783
+   | 
+1782 |   task_priorities                                            task_priorities            @relation(fields: [priority_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tasks_priority_fk")
+1783 |   projects                                                   projects                   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "tasks_project_fk")
+1784 |   users                                                      users                      @relation(fields: [reporter_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tasks_reporter_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `tasks` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1784
+   | 
+1783 |   projects                                                   projects                   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "tasks_project_fk")
+1784 |   users                                                      users                      @relation(fields: [reporter_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tasks_reporter_id_fk")
+1785 |   task_statuses                                              task_statuses              @relation(fields: [status_id], references: [id], onUpdate: NoAction, map: "tasks_status_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `tasks_assignees` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1802
+   | 
+1801 |   assigned_by       String          @db.Uuid
+1802 |   users             users           @relation(fields: [assigned_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tasks_assignees_assigned_by_fk")
+1803 |   project_members   project_members @relation(fields: [project_member_id], references: [id], onDelete: Cascade, map: "tasks_assignees_project_member_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `team_labels` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1819
+   | 
+1818 |   task_labels     task_labels[]
+1819 |   teams           teams             @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "team_labels_team_id_fk")
+1820 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `team_members` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1845
+   | 
+1844 |   roles                      roles                        @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_members_role_id_fk")
+1845 |   teams                      teams                        @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "team_members_team_id_fk")
+1846 |   users                      users?                       @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_members_user_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `team_members` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1846
+   | 
+1845 |   teams                      teams                        @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "team_members_team_id_fk")
+1846 |   users                      users?                       @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_members_user_id_fk")
+1847 | }
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `timezones` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1854
+   | 
+1853 |   utc_offset Unsupported("interval")
+1854 |   users      users[]
+1855 | }
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `user_deletion_logs` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1868
+   | 
+1867 |   created_at              DateTime  @default(now()) @db.Timestamptz(6)
+1868 |   users                   users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_deletion_logs_user_id_fk")
+1869 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `projects` on Model `user_notifications` must specify the `@ignore` attribute, because the model projects it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1883
+   | 
+1882 |   project_id String?   @db.Uuid
+1883 |   projects   projects? @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_notifications_project_id_fk")
+1884 |   tasks      tasks?    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_notifications_task_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `user_notifications` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1885
+   | 
+1884 |   tasks      tasks?    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_notifications_task_id_fk")
+1885 |   teams      teams     @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_notifications_team_id_fk")
+1886 |   users      users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_notifications_user_id_fk")
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `user_notifications` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1886
+   | 
+1885 |   teams      teams     @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_notifications_team_id_fk")
+1886 |   users      users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_notifications_user_id_fk")
+1887 | }
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `users_data` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:1905
+   | 
+1904 |   updating_plan            Boolean?  @default(false)
+1905 |   users                    users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_data_user_id_fk")
+1906 | }
+   | 
+
+Validation Error Count: 94
+[Context: getDmmf]
+
+Prisma CLI Version : 5.22.0
