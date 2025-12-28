@@ -263,7 +263,7 @@ async function validateMigrationData(
 ): Promise<void> {
   console.log('Step 6: Validating migration data...');
 
-  const validations = [];
+  const validations: any[] = [];
 
   // Validate resource count
   validations.push(

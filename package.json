@@ -1,0 +1,18 @@
+{
+  "name": "workspace",
+  "version": "1.0.0",
+  "description": "<h1 align=\"center\">\r     <a href=\"https://worklenz.com\" target=\"_blank\" rel=\"noopener noreferrer\">\r         <img src=\"https://s3.us-west-2.amazonaws.com/worklenz.com/assets/icon-144x144.png\" alt=\"Worklenz Logo\" width=\"75\">\r     </a>\r     <br>\r     Worklenz    \r </h1>",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^25.0.3"
+  }
+}
