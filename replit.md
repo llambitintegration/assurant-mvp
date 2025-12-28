@@ -10,7 +10,7 @@ Worklenz is a full-stack project management application with a React frontend an
 ## Technology Stack
 - **Frontend**: React 18, Vite, TypeScript, Ant Design, TailwindCSS, Redux Toolkit
 - **Backend**: Express.js, Prisma ORM, PostgreSQL, Socket.io
-- **Database**: PostgreSQL (Replit managed)
+- **Database**: PostgreSQL (NeonDB managed)
 
 ## Running the Application
 The application runs with two workflows:
@@ -25,7 +25,7 @@ All environment variables are configured as Replit secrets. Key variables includ
 - `VITE_API_URL` - Backend API URL for frontend
 
 ## Database
-- Uses Replit's managed PostgreSQL database
+- Uses NeonDB via project secret DATABASE_URL
 - Schema defined in `worklenz-backend/database/sql/`
 - Prisma ORM for additional RCM (Resource Capacity Management) features
 
