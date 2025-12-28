@@ -54,3 +54,9 @@ The frontend uses Vite's proxy feature to route API requests to the backend:
 - Made segfault-handler optional to avoid native module issues
 - Excluded data-migration utilities from TypeScript compilation
 - Set up deployment configuration for production
+- **Inventory Layout Refactor (Dec 2025)** - Synced inventory layout styling with Reports tab:
+  - InventoryLayout now matches ReportingLayout (theme support, fixed header with navbar, collapsible sidebar)
+  - Added InventoryCollapsedButton component for sidebar toggle
+  - Updated inventory-sider with theme-aware ConfigProvider and custom CSS class
+  - Added custom-inventory-sider CSS styles to match reporting sidebar pattern
+  - Fixed navigation paths to use correct /worklenz/inventory/ prefix
