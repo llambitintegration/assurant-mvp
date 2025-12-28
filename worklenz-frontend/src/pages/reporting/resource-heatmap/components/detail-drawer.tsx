@@ -4,14 +4,15 @@
  */
 
 import { useState } from 'react';
-import { Drawer, Tag, Typography, Empty, Collapse, Badge as AntBadge } from '@/shared/antd-imports';
+import { Drawer, Tag, Typography, Empty, Collapse, Badge as AntBadge, theme } from 'antd';
 import { StatisticCard, ProCard, ProList } from '@ant-design/pro-components';
 import { 
   ProjectOutlined, 
   ClockCircleOutlined, 
   CalendarOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  CaretRightOutlined
 } from '@ant-design/icons';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
@@ -28,6 +29,7 @@ const { Statistic, Divider: StatDivider } = StatisticCard;
 
 const DetailDrawer = () => {
   const dispatch = useAppDispatch();
+  const { token } = theme.useToken();
   const [activeTab, setActiveTab] = useState('projects');
   const { isDetailDrawerOpen, selectedResourceId, selectedPeriodIndex, resources } = useAppSelector(
     state => state.resourceHeatmapReducer
@@ -56,12 +58,19 @@ const DetailDrawer = () => {
     year: 'numeric',
   });
 
+  const countTasks = (tasks: ITaskDetail[] | undefined): number => {
+    if (!tasks) return 0;
+    return tasks.reduce((sum, task) => {
+      return sum + 1 + countTasks(task.subtasks);
+    }, 0);
+  };
+
   const totalTasks = selectedPeriod.allocations.reduce(
-    (sum, alloc) => sum + (alloc.tasks?.length || 0),
+    (sum, alloc) => sum + countTasks(alloc.tasks),
     0
   );
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string): 'success' | 'processing' | 'error' | 'default' => {
     const statusLower = status.toLowerCase();
     if (statusLower.includes('done') || statusLower.includes('complete')) {
       return 'success';
@@ -75,18 +84,29 @@ const DetailDrawer = () => {
     return 'default';
   };
 
-  const renderTaskItem = (task: ITaskDetail) => (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'space-between', 
-      alignItems: 'center',
-      padding: '8px 12px',
-      borderBottom: '1px solid #f0f0f0'
-    }}>
+  const renderTaskItem = (task: ITaskDetail, isSubtask: boolean = false) => (
+    <div 
+      key={task.task_id}
+      style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        padding: isSubtask ? '6px 12px 6px 32px' : '10px 12px',
+        borderBottom: `1px solid ${token.colorBorderSecondary}`,
+        backgroundColor: isSubtask ? token.colorFillQuaternary : 'transparent',
+      }}
+    >
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <AntBadge status={getStatusBadge(task.status_name)} />
-          <Typography.Text ellipsis style={{ maxWidth: '200px' }}>
+          <Typography.Text 
+            ellipsis 
+            style={{ 
+              maxWidth: isSubtask ? '180px' : '200px',
+              color: token.colorText,
+              fontSize: isSubtask ? '13px' : '14px'
+            }}
+          >
             {task.task_name}
           </Typography.Text>
         </div>
@@ -107,7 +127,7 @@ const DetailDrawer = () => {
           )}
         </div>
       </div>
-      <div style={{ textAlign: 'right', fontSize: '12px', color: '#666' }}>
+      <div style={{ textAlign: 'right', fontSize: '12px', color: token.colorTextSecondary }}>
         {task.end_date && (
           <div>
             <CalendarOutlined style={{ marginRight: '4px' }} />
@@ -124,58 +144,72 @@ const DetailDrawer = () => {
     </div>
   );
 
+  const renderTaskWithSubtasks = (task: ITaskDetail) => (
+    <div key={task.task_id}>
+      {renderTaskItem(task, false)}
+      {task.subtasks && task.subtasks.length > 0 && (
+        <div style={{ borderLeft: `2px solid ${token.colorPrimaryBorder}`, marginLeft: '16px' }}>
+          {task.subtasks.map(subtask => renderTaskItem(subtask, true))}
+        </div>
+      )}
+    </div>
+  );
+
   const renderProjectAllocation = (allocation: IAllocationDetail) => {
-    const taskCount = allocation.tasks?.length || 0;
+    const taskCount = countTasks(allocation.tasks);
     
-    return (
-      <Collapse.Panel
-        key={allocation.project_id}
-        header={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div 
-                style={{ 
-                  width: '12px', 
-                  height: '12px', 
-                  borderRadius: '2px', 
-                  backgroundColor: allocation.project_color || '#1890ff' 
-                }} 
-              />
-              <Typography.Text strong>{allocation.project_name}</Typography.Text>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <Tag color="blue">{formatPercent(allocation.allocation_percent)}</Tag>
-              {taskCount > 0 && (
-                <Tag color="default">{taskCount} task{taskCount !== 1 ? 's' : ''}</Tag>
-              )}
-            </div>
+    return {
+      key: allocation.project_id,
+      label: (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div 
+              style={{ 
+                width: '12px', 
+                height: '12px', 
+                borderRadius: '2px', 
+                backgroundColor: allocation.project_color || token.colorPrimary 
+              }} 
+            />
+            <Typography.Text strong style={{ color: token.colorText }}>
+              {allocation.project_name}
+            </Typography.Text>
           </div>
-        }
-      >
-        {allocation.tasks && allocation.tasks.length > 0 ? (
-          <div style={{ marginTop: '-12px' }}>
-            {allocation.tasks.map(task => (
-              <div key={task.task_id}>
-                {renderTaskItem(task)}
-              </div>
-            ))}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <Tag color="blue">{formatPercent(allocation.allocation_percent)}</Tag>
+            {taskCount > 0 && (
+              <Tag color="default">{taskCount} task{taskCount !== 1 ? 's' : ''}</Tag>
+            )}
           </div>
-        ) : (
-          <Empty 
-            description="No tasks assigned in this period" 
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            style={{ padding: '16px 0' }}
-          />
-        )}
-      </Collapse.Panel>
-    );
+        </div>
+      ),
+      children: (
+        <div style={{ backgroundColor: token.colorBgContainer }}>
+          {allocation.tasks && allocation.tasks.length > 0 ? (
+            <div>
+              {allocation.tasks.map(task => renderTaskWithSubtasks(task))}
+            </div>
+          ) : (
+            <Empty 
+              description={
+                <Typography.Text style={{ color: token.colorTextSecondary }}>
+                  No tasks assigned in this period
+                </Typography.Text>
+              }
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              style={{ padding: '24px 0' }}
+            />
+          )}
+        </div>
+      ),
+    };
   };
 
   return (
     <Drawer
       title={
         <div>
-          <Typography.Title level={5} style={{ margin: 0 }}>
+          <Typography.Title level={5} style={{ margin: 0, color: token.colorText }}>
             {selectedResource.name}
           </Typography.Title>
           <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
@@ -187,18 +221,28 @@ const DetailDrawer = () => {
       onClose={() => dispatch(closeDetailDrawer())}
       open={isDetailDrawerOpen}
       width={520}
-      styles={{ body: { padding: '16px' } }}
+      styles={{ 
+        body: { padding: '16px', backgroundColor: token.colorBgLayout },
+        header: { backgroundColor: token.colorBgContainer }
+      }}
     >
-      <StatisticCard.Group direction="row">
+      <StatisticCard.Group 
+        direction="row"
+        style={{ 
+          backgroundColor: token.colorBgContainer, 
+          borderRadius: token.borderRadiusLG,
+          marginBottom: '16px'
+        }}
+      >
         <StatisticCard
           statistic={{
-            title: 'Utilization',
+            title: <span style={{ color: token.colorTextSecondary }}>Utilization</span>,
             value: selectedPeriod.utilization_percent,
             suffix: '%',
             valueStyle: { color: utilizationColor },
             description: (
               <Statistic 
-                title="Status" 
+                title={<span style={{ color: token.colorTextTertiary }}>Status</span>}
                 value={utilizationStatus} 
                 layout="horizontal"
               />
@@ -208,12 +252,12 @@ const DetailDrawer = () => {
         <StatDivider type="vertical" />
         <StatisticCard
           statistic={{
-            title: 'Allocated',
+            title: <span style={{ color: token.colorTextSecondary }}>Allocated</span>,
             value: selectedPeriod.allocated_hours.toFixed(1),
             suffix: 'h',
             description: (
               <Statistic 
-                title="of available" 
+                title={<span style={{ color: token.colorTextTertiary }}>of available</span>}
                 value={selectedPeriod.net_available_hours.toFixed(1)} 
                 suffix="h"
                 layout="horizontal"
@@ -224,11 +268,11 @@ const DetailDrawer = () => {
         <StatDivider type="vertical" />
         <StatisticCard
           statistic={{
-            title: 'Projects',
+            title: <span style={{ color: token.colorTextSecondary }}>Projects</span>,
             value: selectedPeriod.allocations.length,
             description: (
               <Statistic 
-                title="Tasks" 
+                title={<span style={{ color: token.colorTextTertiary }}>Tasks</span>}
                 value={totalTasks} 
                 layout="horizontal"
               />
@@ -245,7 +289,7 @@ const DetailDrawer = () => {
             {
               key: 'projects',
               label: (
-                <span>
+                <span style={{ color: activeTab === 'projects' ? token.colorPrimary : token.colorText }}>
                   <ProjectOutlined /> Projects & Tasks
                 </span>
               ),
@@ -255,12 +299,27 @@ const DetailDrawer = () => {
                     <Collapse 
                       defaultActiveKey={selectedPeriod.allocations.map(a => a.project_id)}
                       ghost
-                      style={{ background: '#fafafa', borderRadius: '8px' }}
-                    >
-                      {selectedPeriod.allocations.map(allocation => renderProjectAllocation(allocation))}
-                    </Collapse>
+                      expandIcon={({ isActive }) => <CaretRightOutlined rotate={isActive ? 90 : 0} style={{ color: token.colorTextSecondary }} />}
+                      style={{ 
+                        background: token.colorBgContainer, 
+                        borderRadius: token.borderRadiusLG,
+                        border: `1px solid ${token.colorBorderSecondary}`
+                      }}
+                      items={selectedPeriod.allocations.map(allocation => renderProjectAllocation(allocation))}
+                    />
                   ) : (
-                    <Empty description="No project allocations for this period" />
+                    <Empty 
+                      description={
+                        <Typography.Text style={{ color: token.colorTextSecondary }}>
+                          No project allocations for this period
+                        </Typography.Text>
+                      }
+                      style={{ 
+                        padding: '32px', 
+                        backgroundColor: token.colorBgContainer,
+                        borderRadius: token.borderRadiusLG
+                      }}
+                    />
                   )}
                 </div>
               ),
@@ -268,49 +327,57 @@ const DetailDrawer = () => {
             {
               key: 'time',
               label: (
-                <span>
+                <span style={{ color: activeTab === 'time' ? token.colorPrimary : token.colorText }}>
                   <ClockCircleOutlined /> Time Breakdown
                 </span>
               ),
               children: (
-                <div style={{ marginTop: '16px' }}>
+                <div style={{ 
+                  marginTop: '16px', 
+                  backgroundColor: token.colorBgContainer,
+                  borderRadius: token.borderRadiusLG,
+                  padding: '16px'
+                }}>
                   <ProList<{label: string; value: string; icon: React.ReactNode}>
                     ghost
                     dataSource={[
                       {
                         label: 'Period',
                         value: `${periodStart} - ${periodEnd}`,
-                        icon: <CalendarOutlined style={{ color: '#1890ff' }} />
+                        icon: <CalendarOutlined style={{ color: token.colorPrimary }} />
                       },
                       {
                         label: 'Total Allocation',
                         value: formatPercent(selectedPeriod.total_allocation_percent),
-                        icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                        icon: <CheckCircleOutlined style={{ color: token.colorSuccess }} />
                       },
                       {
                         label: 'Allocated Hours',
                         value: formatHours(selectedPeriod.allocated_hours),
-                        icon: <ClockCircleOutlined style={{ color: '#1890ff' }} />
+                        icon: <ClockCircleOutlined style={{ color: token.colorPrimary }} />
                       },
                       {
                         label: 'Available Hours',
                         value: formatHours(selectedPeriod.net_available_hours),
-                        icon: <ClockCircleOutlined style={{ color: '#52c41a' }} />
+                        icon: <ClockCircleOutlined style={{ color: token.colorSuccess }} />
                       },
                       {
                         label: 'Unavailable Hours',
                         value: formatHours(selectedPeriod.unavailable_hours),
-                        icon: <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+                        icon: <ExclamationCircleOutlined style={{ color: token.colorWarning }} />
                       },
                     ]}
                     metas={{
                       title: {
                         dataIndex: 'label',
+                        render: (_, row) => (
+                          <Typography.Text style={{ color: token.colorTextSecondary }}>{row.label}</Typography.Text>
+                        ),
                       },
                       description: {
                         dataIndex: 'value',
                         render: (_, row) => (
-                          <Typography.Text strong>{row.value}</Typography.Text>
+                          <Typography.Text strong style={{ color: token.colorText }}>{row.value}</Typography.Text>
                         ),
                       },
                       avatar: {
@@ -322,7 +389,7 @@ const DetailDrawer = () => {
 
                   {selectedPeriod.unavailabilities && selectedPeriod.unavailabilities.length > 0 && (
                     <>
-                      <Typography.Title level={5} style={{ marginTop: '16px', marginBottom: '8px' }}>
+                      <Typography.Title level={5} style={{ marginTop: '16px', marginBottom: '8px', color: token.colorText }}>
                         Unavailability Periods
                       </Typography.Title>
                       <ProList
@@ -335,9 +402,15 @@ const DetailDrawer = () => {
                         metas={{
                           title: {
                             dataIndex: 'title',
+                            render: (_, row) => (
+                              <Typography.Text style={{ color: token.colorText }}>{row.title}</Typography.Text>
+                            ),
                           },
                           description: {
                             dataIndex: 'description',
+                            render: (_, row) => (
+                              <Typography.Text style={{ color: token.colorTextSecondary }}>{row.description}</Typography.Text>
+                            ),
                           },
                           extra: {
                             render: (_, row) => (
@@ -353,9 +426,14 @@ const DetailDrawer = () => {
             },
             {
               key: 'summary',
-              label: 'Resource Summary',
+              label: <span style={{ color: activeTab === 'summary' ? token.colorPrimary : token.colorText }}>Resource Summary</span>,
               children: (
-                <div style={{ marginTop: '16px' }}>
+                <div style={{ 
+                  marginTop: '16px', 
+                  backgroundColor: token.colorBgContainer,
+                  borderRadius: token.borderRadiusLG,
+                  padding: '16px'
+                }}>
                   <ProList
                     ghost
                     dataSource={[
@@ -393,13 +471,16 @@ const DetailDrawer = () => {
                     metas={{
                       title: {
                         dataIndex: 'label',
+                        render: (_, row) => (
+                          <Typography.Text style={{ color: token.colorTextSecondary }}>{row.label}</Typography.Text>
+                        ),
                       },
                       description: {
                         render: (_, row) => 
                           row.tag ? (
                             <Tag color={row.tagColor}>{row.value}</Tag>
                           ) : (
-                            <Typography.Text strong>{row.value}</Typography.Text>
+                            <Typography.Text strong style={{ color: token.colorText }}>{row.value}</Typography.Text>
                           ),
                       },
                     }}
@@ -409,7 +490,10 @@ const DetailDrawer = () => {
             },
           ],
         }}
-        style={{ marginTop: '16px' }}
+        style={{ 
+          backgroundColor: token.colorBgContainer, 
+          borderRadius: token.borderRadiusLG 
+        }}
       />
     </Drawer>
   );

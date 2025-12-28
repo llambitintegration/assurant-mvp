@@ -270,6 +270,7 @@ export async function getResourceAllocations(
 
 /**
  * Get tasks assigned to a resource for specific projects within a date range
+ * Includes subtasks nested under their parent tasks
  */
 export async function getResourceTasks(
   resourceEmail: string,
@@ -281,11 +282,12 @@ export async function getResourceTasks(
     return new Map();
   }
 
-  // Query tasks assigned to the resource via email -> user -> team_member -> tasks_assignees
+  // Query tasks and subtasks assigned to the resource via email -> user -> team_member -> tasks_assignees
   const tasks = await prisma.$queryRaw<Array<{
     task_id: string;
     task_name: string;
     project_id: string;
+    parent_task_id: string | null;
     status_name: string;
     status_color: string;
     priority_name: string;
@@ -298,6 +300,7 @@ export async function getResourceTasks(
       t.id as task_id,
       t.name as task_name,
       t.project_id,
+      t.parent_task_id,
       COALESCE(ts.name, 'Unknown') as status_name,
       COALESCE(ts.color_code, '#808080') as status_color,
       COALESCE(tp.name, 'None') as priority_name,
@@ -318,12 +321,14 @@ export async function getResourceTasks(
         OR (t.start_date < ${endDate} AND (t.end_date IS NULL OR t.end_date > ${startDate}))
         OR (t.start_date IS NULL AND t.end_date > ${startDate})
       )
-    ORDER BY t.start_date ASC NULLS LAST, t.name ASC
+    ORDER BY t.parent_task_id NULLS FIRST, t.start_date ASC NULLS LAST, t.name ASC
   `;
 
-  // Group tasks by project
+  // Build task map for nesting subtasks
+  const taskMap = new Map<string, ITaskDetail>();
   const tasksByProject = new Map<string, ITaskDetail[]>();
   
+  // First pass: create all task details
   for (const task of tasks) {
     const taskDetail: ITaskDetail = {
       task_id: task.task_id,
@@ -335,12 +340,46 @@ export async function getResourceTasks(
       start_date: task.start_date?.toISOString(),
       end_date: task.end_date?.toISOString(),
       estimated_hours: undefined,
-      logged_hours: task.total_minutes > 0 ? task.total_minutes / 60 : undefined
+      logged_hours: task.total_minutes > 0 ? task.total_minutes / 60 : undefined,
+      parent_task_id: task.parent_task_id || undefined,
+      subtasks: []
     };
 
-    const projectTasks = tasksByProject.get(task.project_id) || [];
-    projectTasks.push(taskDetail);
-    tasksByProject.set(task.project_id, projectTasks);
+    taskMap.set(task.task_id, taskDetail);
+  }
+
+  // Track which tasks are subtasks that should be nested (not shown at top level)
+  const nestedSubtaskIds = new Set<string>();
+
+  // Second pass: identify and nest subtasks under their parents
+  for (const task of tasks) {
+    if (task.parent_task_id && taskMap.has(task.parent_task_id)) {
+      // This is a subtask with parent in our result set - nest it
+      const taskDetail = taskMap.get(task.task_id)!;
+      const parentTask = taskMap.get(task.parent_task_id)!;
+      if (!parentTask.subtasks) parentTask.subtasks = [];
+      parentTask.subtasks.push(taskDetail);
+      nestedSubtaskIds.add(task.task_id);
+    }
+  }
+
+  // Third pass: add only top-level tasks to project list (excluding nested subtasks)
+  for (const task of tasks) {
+    if (!nestedSubtaskIds.has(task.task_id)) {
+      const taskDetail = taskMap.get(task.task_id)!;
+      const projectTasks = tasksByProject.get(task.project_id) || [];
+      projectTasks.push(taskDetail);
+      tasksByProject.set(task.project_id, projectTasks);
+    }
+  }
+
+  // Clean up empty subtask arrays
+  for (const [_, projectTasks] of tasksByProject) {
+    for (const task of projectTasks) {
+      if (task.subtasks && task.subtasks.length === 0) {
+        delete task.subtasks;
+      }
+    }
   }
 
   return tasksByProject;

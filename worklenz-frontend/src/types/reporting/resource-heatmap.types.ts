@@ -27,6 +27,8 @@ export interface ITaskDetail {
   end_date?: string;
   estimated_hours?: number;
   logged_hours?: number;
+  parent_task_id?: string;
+  subtasks?: ITaskDetail[];
 }
 
 export interface IAllocationDetail {
