@@ -28,10 +28,11 @@ app.set("port", port);
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  transports: ["websocket"],
+  transports: ["polling", "websocket"],
   path: "/socket",
   cors: {
-    origin: (process.env.SOCKET_IO_CORS || "*").split(",")
+    origin: (process.env.SOCKET_IO_CORS || "*").split(","),
+    credentials: true
   },
   cookie: true
 });
