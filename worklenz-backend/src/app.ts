@@ -56,14 +56,21 @@ const getReplitOrigins = (): string[] => {
   const replitDomains = process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN;
   if (replitDomains) {
     replitDomains.split(',').forEach(domain => {
-      const cleanDomain = domain.trim();
-      if (cleanDomain) {
+      let cleanDomain = domain.trim().replace(/\/+$/, '');
+      if (!cleanDomain) return;
+      
+      if (cleanDomain.startsWith('http://') || cleanDomain.startsWith('https://')) {
+        origins.push(cleanDomain);
+        const withoutProtocol = cleanDomain.replace(/^https?:\/\//, '');
+        origins.push(`https://${withoutProtocol}`);
+        origins.push(`http://${withoutProtocol}`);
+      } else {
         origins.push(`https://${cleanDomain}`);
         origins.push(`http://${cleanDomain}`);
       }
     });
   }
-  return origins;
+  return [...new Set(origins)];
 };
 
 const allowedOrigins = [
