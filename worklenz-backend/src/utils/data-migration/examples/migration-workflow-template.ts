@@ -21,11 +21,10 @@ import { PrismaClient } from '@prisma/client';
 
 // Import migration utilities
 import { generateUuidV5, generateResourceId, generateTeamId, generateProjectId } from '../uuid-generation/deterministic-uuid';
-import { parseTsvFile, getTsvColumn, getTsvRow, mapTsvToObjects } from '../tsv-parsing/tsv-parser';
+import { parseTsvFile } from '../tsv-parsing/tsv-parser';
 import { parseDate, getWeekEndDate, formatIsoDateTime } from '../extractors/date-utils';
 import { hoursToPercent, mergeConsecutivePeriods } from '../extractors/allocation-calculator';
 import {
-  validateSum,
   validateRequiredFields,
   validateUuidFields,
   validateCount,
@@ -129,7 +128,7 @@ interface Department {
   description?: string;
 }
 
-async function extractDepartments(sourceData: any): Promise<Department[]> {
+async function extractDepartments(_sourceData: any): Promise<Department[]> {
   console.log('Step 3: Extracting departments...');
 
   const departments: Department[] = [];
@@ -224,7 +223,7 @@ async function extractAllocations(
   const merged = mergeConsecutivePeriods(allocations);
   console.log(`  ✓ Merged to ${merged.length} allocations (${Math.round((1 - merged.length / allocations.length) * 100)}% reduction)`);
 
-  return merged;
+  return merged as Allocation[];
 }
 
 // ============================================================================
@@ -387,7 +386,7 @@ async function outputJSON(
 // ============================================================================
 
 async function importToDatabase(
-  foundation: FoundationData,
+  _foundation: FoundationData,
   resources: Resource[],
   departments: Department[],
   allocations: Allocation[]
