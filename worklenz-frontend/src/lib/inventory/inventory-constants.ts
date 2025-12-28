@@ -21,38 +21,38 @@ export const INVENTORY_MENU_ITEMS: InventoryMenuItem[] = [
     key: 'dashboard',
     label: 'Dashboard',
     icon: React.createElement(DashboardOutlined),
-    path: '/inventory/dashboard',
+    path: '/worklenz/inventory/dashboard',
   },
   {
     key: 'components',
     label: 'Components',
     icon: React.createElement(ShoppingOutlined),
-    path: '/inventory/components',
+    path: '/worklenz/inventory/components',
   },
   {
     key: 'suppliers',
     label: 'Suppliers',
     icon: React.createElement(ShopOutlined),
-    path: '/inventory/suppliers',
+    path: '/worklenz/inventory/suppliers',
   },
   {
     key: 'locations',
     label: 'Storage Locations',
     icon: React.createElement(EnvironmentOutlined),
-    path: '/inventory/storage-locations',
+    path: '/worklenz/inventory/storage-locations',
   },
   {
     key: 'transactions',
     label: 'Transactions',
     icon: React.createElement(SwapOutlined),
-    path: '/inventory/transactions',
+    path: '/worklenz/inventory/transactions',
   },
   {
     key: 'import',
     label: 'CSV Import',
     icon: React.createElement(UploadOutlined),
-    path: '/inventory/csv-import',
+    path: '/worklenz/inventory/csv-import',
   },
 ];
 
-export const INVENTORY_BASE_PATH = '/inventory';
+export const INVENTORY_BASE_PATH = '/worklenz/inventory';

@@ -1,35 +1,47 @@
-import { Menu } from '@/shared/antd-imports';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { ConfigProvider, Flex, Menu } from '@/shared/antd-imports';
+import { Link, useLocation } from 'react-router-dom';
+import { colors } from '@/styles/colors';
 import { INVENTORY_MENU_ITEMS } from '@/lib/inventory/inventory-constants';
+import { useMemo } from 'react';
 
 const InventorySider = () => {
-  const navigate = useNavigate();
   const location = useLocation();
 
-  // Find current selected key based on pathname
-  const selectedKey = INVENTORY_MENU_ITEMS.find(item =>
-    location.pathname.includes(item.path)
-  )?.key || 'dashboard';
-
-  const handleMenuClick = ({ key }: { key: string }) => {
-    const item = INVENTORY_MENU_ITEMS.find(i => i.key === key);
-    if (item) {
-      navigate(item.path);
-    }
-  };
-
-  return (
-    <Menu
-      mode="inline"
-      selectedKeys={[selectedKey]}
-      items={INVENTORY_MENU_ITEMS.map(item => ({
+  const menuItems = useMemo(
+    () =>
+      INVENTORY_MENU_ITEMS.map(item => ({
         key: item.key,
         icon: item.icon,
-        label: item.label,
-      }))}
-      onClick={handleMenuClick}
-      style={{ height: '100%', borderRight: 0 }}
-    />
+        label: <Link to={item.path}>{item.label}</Link>,
+      })),
+    []
+  );
+
+  const activeKey = useMemo(() => {
+    const pathParts = location.pathname.split('/worklenz/inventory/')[1];
+    return pathParts?.split('/')[0] || 'dashboard';
+  }, [location.pathname]);
+
+  return (
+    <ConfigProvider
+      theme={{
+        components: {
+          Menu: {
+            subMenuItemBg: colors.transparent,
+          },
+        },
+      }}
+    >
+      <Flex gap={24} vertical>
+        <Menu
+          className="custom-inventory-sider"
+          items={menuItems}
+          selectedKeys={[activeKey]}
+          mode="inline"
+          style={{ width: '100%' }}
+        />
+      </Flex>
+    </ConfigProvider>
   );
 };
 
