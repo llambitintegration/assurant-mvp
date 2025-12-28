@@ -275,14 +275,16 @@ export async function getResourceAllocations(
 export async function getResourceTasks(
   resourceEmail: string,
   projectIds: string[],
-  startDate: Date,
-  endDate: Date
+  _startDate: Date,
+  _endDate: Date
 ): Promise<Map<string, ITaskDetail[]>> {
   if (!resourceEmail || projectIds.length === 0) {
     return new Map();
   }
 
-  // Query tasks and subtasks assigned to the resource via email -> user -> team_member -> tasks_assignees
+  // Query ALL tasks and subtasks assigned to the resource in the allocated projects
+  // Note: We don't filter by date - show all tasks the resource is assigned to in these projects
+  // This gives visibility into the full scope of work for allocations
   const tasks = await prisma.$queryRaw<Array<{
     task_id: string;
     task_name: string;
@@ -316,11 +318,6 @@ export async function getResourceTasks(
     LEFT JOIN task_priorities tp ON t.priority_id = tp.id
     WHERE u.email = ${resourceEmail}
       AND t.project_id = ANY(${projectIds}::uuid[])
-      AND (
-        (t.start_date IS NULL AND t.end_date IS NULL)
-        OR (t.start_date < ${endDate} AND (t.end_date IS NULL OR t.end_date > ${startDate}))
-        OR (t.start_date IS NULL AND t.end_date > ${startDate})
-      )
     ORDER BY t.parent_task_id NULLS FIRST, t.start_date ASC NULLS LAST, t.name ASC
   `;
 
