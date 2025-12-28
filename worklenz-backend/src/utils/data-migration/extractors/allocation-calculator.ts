@@ -229,7 +229,7 @@ export function aggregateMultiRoleAllocations(
   // Aggregate each group
   const aggregated: AllocationPeriod[] = [];
 
-  for (const [key, group] of groups) {
+  for (const [, group] of groups) {
     if (group.length === 1) {
       aggregated.push(group[0]);
     } else {
