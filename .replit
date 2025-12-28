@@ -30,29 +30,23 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd worklenz-backend && node build/bin/www.js"
+args = "cd worklenz-backend && npm run build && npm run start"
+waitForPort = 3000
 
 [[workflows.workflow]]
 name = "Frontend"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd worklenz-frontend && npm run dev"
-
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd worklenz-frontend && npm run dev"
+waitForPort = 5000
+
 [[ports]]
 localPort = 3000
-externalPort = 80
-
-[[ports]]
-localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 5001
 externalPort = 3000
 
 [deployment]

@@ -1,7 +1,7 @@
 // Worklenz Service Worker
 // Provides offline functionality, caching, and performance improvements
 
-const CACHE_VERSION = 'v1.0.0';
+const CACHE_VERSION = 'v1.0.1';
 const CACHE_NAMES = {
   STATIC: `worklenz-static-${CACHE_VERSION}`,
   DYNAMIC: `worklenz-dynamic-${CACHE_VERSION}`,
@@ -40,6 +40,11 @@ const NEVER_CACHE_PATTERNS = [
   /sw\.js$/,
   /chrome-extension/,
   /moz-extension/,
+  /\/csrf-token/,
+  /\/secure\//,
+  /\/@vite\//,
+  /\/src\//,
+  /\/@react-refresh/,
 ];
 
 // Install event - Cache static resources

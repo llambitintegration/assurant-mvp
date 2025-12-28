@@ -17,8 +17,25 @@ type Config = {
 };
 
 export function registerSW(config?: Config) {
+  // In development mode, unregister any existing service worker and skip registration
+  const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+  
+  if (isDevelopment) {
+    console.log('Service Worker: Skipping registration in development mode');
+    // Unregister any existing service worker to prevent caching issues
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (const registration of registrations) {
+          registration.unregister();
+          console.log('Service Worker: Unregistered existing worker in dev mode');
+        }
+      });
+    }
+    return;
+  }
+  
   if ('serviceWorker' in navigator) {
-    // Only register in production or when explicitly testing
+    // Only register in production
     const swUrl = '/sw.js';
 
     if (isLocalhost) {
