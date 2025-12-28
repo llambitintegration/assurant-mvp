@@ -185,7 +185,7 @@ async function extractAllocations(
   // Extract week dates from source
   const weekDates = sourceData.headers
     .slice(4)
-    .filter((cell: string) => cell.includes('/'))
+    .filter((cell: string) => cell && cell.includes('/'))
     .map(parseDate);
 
   // Extract hours for each resource-week combination
