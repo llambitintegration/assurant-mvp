@@ -49,6 +49,10 @@ waitForPort = 5000
 localPort = 3000
 externalPort = 3000
 
+[[ports]]
+localPort = 5000
+externalPort = 80
+
 [deployment]
 deploymentTarget = "vm"
 run = ["bash", "-c", "cd worklenz-backend && node build/bin/www.js"]
