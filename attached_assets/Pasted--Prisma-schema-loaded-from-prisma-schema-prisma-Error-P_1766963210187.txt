@@ -1,0 +1,66 @@
+
+Prisma schema loaded from prisma/schema.prisma
+Error: Prisma schema validation - (get-dmmf wasm)
+Error code: P1012
+error: Error parsing attribute "@ignore": The relation field `users` on Model `rcm_resources` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:208
+   | 
+207 |   resource_skills        rcm_resource_skills[]
+208 |   users                  users                                 @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+209 |   teams                  teams                                 @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `rcm_resources` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:209
+   | 
+208 |   users                  users                                 @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+209 |   teams                  teams                                 @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+210 |   unavailability_periods rcm_unavailability_periods[]
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `rcm_departments` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:228
+   | 
+227 |   is_active            Boolean                               @default(true)
+228 |   users                users                                 @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+229 |   parent_department    rcm_departments?                      @relation("DepartmentHierarchy", fields: [parent_dept_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `rcm_departments` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:231
+   | 
+230 |   child_departments    rcm_departments[]                     @relation("DepartmentHierarchy")
+231 |   teams                teams                                 @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+232 |   resource_assignments rcm_resource_department_assignments[]
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `rcm_resource_department_assignments` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:246
+   | 
+245 |   assigned_by   String          @db.Uuid
+246 |   users         users           @relation(fields: [assigned_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+247 |   department    rcm_departments @relation(fields: [department_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `rcm_skills` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:266
+   | 
+265 |   resource_skills rcm_resource_skills[]
+266 |   users           users                 @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+267 |   teams           teams                 @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+   | 
+error: Error parsing attribute "@ignore": The relation field `teams` on Model `rcm_skills` must specify the `@ignore` attribute, because the model teams it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:267
+   | 
+266 |   users           users                 @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+267 |   teams           teams                 @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+268 | 
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `rcm_resource_skills` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:283
+   | 
+282 |   assigned_by      String                @db.Uuid
+283 |   users            users                 @relation(fields: [assigned_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+284 |   resource         rcm_resources         @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+   | 
+error: Error parsing attribute "@ignore": The relation field `users` on Model `rcm_availability` must specify the `@ignore` attribute, because the model users it is pointing to is marked ignored.
+  -->  prisma/schema.prisma:304
+   | 
+303 |   updated_at           DateTime      @default(now()) @updatedAt @db.Timestamptz(6)
+304 |   users                users         @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+305 |   resource             rcm_resources @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)

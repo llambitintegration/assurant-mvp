@@ -11,8 +11,8 @@ const csvApiRouter = express.Router();
 // Import components from CSV file
 csvApiRouter.post(
   "/import",
-  csvUploadValidator,
-  handleCsvUploadErrors,
+  csvUploadValidator as any,
+  handleCsvUploadErrors as any,
   safeControllerFunction(InvCsvController.importCSV)
 );
 

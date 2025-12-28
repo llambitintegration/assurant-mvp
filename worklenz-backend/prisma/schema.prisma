@@ -1,3 +1,6 @@
+// Prisma schema for Resource Capacity Management (RCM) extension
+// This schema defines RCM-specific tables while referencing existing Worklenz tables
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,1913 +10,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model users {
-  id                                                                    String                                @id(map: "users_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                                                                  String
-  email                                                                 String
-  password                                                              String?
-  active_team                                                           String?                               @db.Uuid
-  avatar_url                                                            String?
-  setup_completed                                                       Boolean                               @default(false)
-  user_no                                                               BigInt                                @default(autoincrement())
-  timezone_id                                                           String                                @db.Uuid
-  google_id                                                             String?
-  socket_id                                                             String?
-  created_at                                                            DateTime                              @default(now()) @db.Timestamptz(6)
-  updated_at                                                            DateTime                              @default(now()) @db.Timestamptz(6)
-  last_active                                                           DateTime                              @default(now()) @db.Timestamptz(6)
-  temp_email                                                            Boolean?                              @default(false)
-  is_deleted                                                            Boolean?                              @default(false)
-  deleted_at                                                            DateTime?                             @db.Timestamptz(6)
-  language                                                              language_type?                        @default(en)
-  archived_projects                                                     archived_projects[]
-  favorite_projects                                                     favorite_projects[]
-  inv_barcode_mappings                                                  inv_barcode_mappings[]
-  inv_components                                                        inv_components[]
-  inv_storage_locations                                                 inv_storage_locations[]
-  inv_suppliers                                                         inv_suppliers[]
-  inv_transactions                                                      inv_transactions[]
-  licensing_coupon_codes                                                licensing_coupon_codes[]
-  licensing_coupon_logs                                                 licensing_coupon_logs[]
-  licensing_credit_subs                                                 licensing_credit_subs[]
-  licensing_custom_subs                                                 licensing_custom_subs[]
-  licensing_payment_details                                             licensing_payment_details[]
-  licensing_user_subscriptions                                          licensing_user_subscriptions[]
-  notification_settings                                                 notification_settings[]
-  organizations                                                         organizations?
-  personal_todo_list                                                    personal_todo_list[]
-  project_categories                                                    project_categories[]
-  project_comment_mentions_project_comment_mentions_informed_byTousers  project_comment_mentions[]            @relation("project_comment_mentions_informed_byTousers") @ignore
-  project_comment_mentions_project_comment_mentions_mentioned_byTousers project_comment_mentions[]            @relation("project_comment_mentions_mentioned_byTousers") @ignore
-  project_comments                                                      project_comments[]
-  project_folders                                                       project_folders[]
-  project_subscribers                                                   project_subscribers[]
-  projects                                                              projects[]
-  rcm_allocations                                                       rcm_allocations[]
-  rcm_availability                                                      rcm_availability[]
-  rcm_departments                                                       rcm_departments[]
-  rcm_resource_department_assignments                                   rcm_resource_department_assignments[]
-  rcm_resource_skills                                                   rcm_resource_skills[]
-  rcm_resources                                                         rcm_resources[]
-  rcm_skills                                                            rcm_skills[]
-  rcm_unavailability_periods                                            rcm_unavailability_periods[]
-  survey_responses                                                      survey_responses[]
-  task_activity_logs                                                    task_activity_logs[]
-  task_attachments                                                      task_attachments[]
-  task_comment_mentions                                                 task_comment_mentions[]               @ignore
-  task_comment_reactions                                                task_comment_reactions[]
-  task_comments                                                         task_comments[]
-  task_subscribers                                                      task_subscribers[]
-  task_timers                                                           task_timers[]
-  task_updates_task_updates_reporter_idTousers                          task_updates[]                        @relation("task_updates_reporter_idTousers")
-  task_updates_task_updates_user_idTousers                              task_updates[]                        @relation("task_updates_user_idTousers")
-  task_work_log                                                         task_work_log[]
-  tasks                                                                 tasks[]
-  tasks_assignees                                                       tasks_assignees[]
-  team_members                                                          team_members[]
-  teams_teams_user_idTousers                                            teams[]                               @relation("teams_user_idTousers")
-  user_deletion_logs                                                    user_deletion_logs[]
-  user_notifications                                                    user_notifications[]
-  teams_users_active_teamToteams                                        teams?                                @relation("users_active_teamToteams", fields: [active_team], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_active_team_fk")
-  timezones                                                             timezones                             @relation(fields: [timezone_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_timezone_id_fk")
-  users_data                                                            users_data?
-
-  @@ignore
-}
-
-model teams {
-  id                             String                     @id(map: "teams_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                           String
-  user_id                        String                     @db.Uuid
-  created_at                     DateTime                   @default(now()) @db.Timestamptz(6)
-  updated_at                     DateTime                   @default(now()) @db.Timestamptz(6)
-  organization_id                String?                    @db.Uuid
-  clients                        clients[]
-  cpt_task_statuses              cpt_task_statuses[]
-  custom_project_templates       custom_project_templates[]
-  email_invitations              email_invitations[]
-  inv_barcode_mappings           inv_barcode_mappings[]
-  inv_components                 inv_components[]
-  inv_storage_locations          inv_storage_locations[]
-  inv_suppliers                  inv_suppliers[]
-  inv_transactions               inv_transactions[]
-  job_titles                     job_titles[]
-  notification_settings          notification_settings[]
-  project_categories             project_categories[]
-  project_folders                project_folders[]
-  project_logs                   project_logs[]
-  projects                       projects[]
-  pt_task_statuses               pt_task_statuses[]
-  rcm_departments                rcm_departments[]
-  rcm_resources                  rcm_resources[]
-  rcm_skills                     rcm_skills[]
-  task_activity_logs             task_activity_logs[]
-  task_attachments               task_attachments[]
-  task_comment_attachments       task_comment_attachments[]
-  task_statuses                  task_statuses[]
-  task_templates                 task_templates[]
-  task_updates                   task_updates[]
-  team_labels                    team_labels[]
-  team_members                   team_members[]
-  organizations                  organizations?             @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_organization_id_pk")
-  users_teams_user_idTousers     users                      @relation("teams_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "teams_user_id_fk")
-  user_notifications             user_notifications[]
-  users_users_active_teamToteams users[]                    @relation("users_active_teamToteams")
-
-  @@ignore
-}
-
-model projects {
-  id                         String                       @id(map: "projects_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                       String
-  key                        String
-  color_code                 String                       @default("#70a6f3")
-  notes                      String?
-  tasks_counter              BigInt                       @default(0)
-  start_date                 DateTime?                    @db.Timestamptz(6)
-  end_date                   DateTime?                    @db.Timestamptz(6)
-  team_id                    String                       @db.Uuid
-  client_id                  String?                      @db.Uuid
-  owner_id                   String                       @db.Uuid
-  status_id                  String                       @db.Uuid
-  created_at                 DateTime                     @default(now()) @db.Timestamptz(6)
-  updated_at                 DateTime                     @default(now()) @db.Timestamptz(6)
-  category_id                String?                      @db.Uuid
-  folder_id                  String?                      @db.Uuid
-  phase_label                String                       @default("Phase")
-  estimated_man_days         Int?                         @default(0)
-  hours_per_day              Int?                         @default(8)
-  health_id                  String?                      @db.Uuid
-  estimated_working_days     Int?                         @default(0)
-  use_manual_progress        Boolean                      @default(false)
-  use_weighted_progress      Boolean                      @default(false)
-  use_time_progress          Boolean                      @default(false)
-  archived_projects          archived_projects[]
-  cc_custom_columns          cc_custom_columns[]
-  favorite_projects          favorite_projects[]
-  project_comments           project_comments[]
-  project_logs               project_logs[]
-  project_member_allocations project_member_allocations[]
-  project_members            project_members[]
-  project_phases             project_phases[]
-  project_subscribers        project_subscribers[]
-  project_task_list_cols     project_task_list_cols[]
-  project_categories         project_categories?          @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "projects_category_id_fk")
-  clients                    clients?                     @relation(fields: [client_id], references: [id], onUpdate: NoAction, map: "projects_client_id_fk")
-  project_folders            project_folders?             @relation(fields: [folder_id], references: [id], onDelete: SetDefault, onUpdate: NoAction, map: "projects_folder_id_fk")
-  users                      users                        @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "projects_owner_id_fk")
-  teams                      teams                        @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "projects_team_id_fk")
-  rcm_allocations            rcm_allocations[]
-  task_activity_logs         task_activity_logs[]
-  task_attachments           task_attachments[]
-  task_comment_attachments   task_comment_attachments[]
-  task_recurring_templates   task_recurring_templates[]   @ignore
-  task_statuses              task_statuses[]
-  task_updates               task_updates[]
-  tasks                      tasks[]
-  user_notifications         user_notifications[]
-
-  @@unique([key, team_id], map: "projects_key_team_id_uindex")
-  @@unique([name, team_id], map: "projects_name_team_id_uindex")
-  @@index([folder_id], map: "projects_folder_id_index")
-  @@index([id, team_id], map: "projects_id_team_id_index")
-  @@index([name], map: "projects_name_index")
-  @@index([team_id, folder_id], map: "projects_team_id_folder_id_index")
-  @@index([team_id], map: "projects_team_id_index")
-  @@index([team_id, name], map: "projects_team_id_name_index")
-  @@ignore
-}
-
-model rcm_resources {
-  id                     String                                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  resource_type          rcm_resource_type
-  first_name             String?                               @db.VarChar(100)
-  last_name              String?                               @db.VarChar(100)
-  email                  String?                               @db.VarChar(255)
-  phone                  String?                               @db.VarChar(50)
-  employee_id            String?                               @db.VarChar(50)
-  equipment_name         String?                               @db.VarChar(200)
-  model                  String?                               @db.VarChar(100)
-  serial_number          String?                               @db.VarChar(100)
-  team_id                String                                @db.Uuid
-  created_by             String                                @db.Uuid
-  created_at             DateTime                              @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime                              @default(now()) @updatedAt @db.Timestamptz(6)
-  is_active              Boolean                               @default(true)
-  notes                  String?
-  allocations            rcm_allocations[]
-  availability           rcm_availability[]
-  department_assignments rcm_resource_department_assignments[]
-  resource_skills        rcm_resource_skills[]
-  users                  users                                 @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  teams                  teams                                 @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  unavailability_periods rcm_unavailability_periods[]
-
-  @@index([created_at], map: "idx_rcm_resources_created_at")
-  @@index([is_active], map: "idx_rcm_resources_is_active")
-  @@index([resource_type], map: "idx_rcm_resources_resource_type")
-  @@index([team_id], map: "idx_rcm_resources_team_id")
-}
-
-model rcm_departments {
-  id                   String                                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                 String                                @db.VarChar(200)
-  description          String?
-  parent_dept_id       String?                               @db.Uuid
-  team_id              String                                @db.Uuid
-  created_by           String                                @db.Uuid
-  created_at           DateTime                              @default(now()) @db.Timestamptz(6)
-  updated_at           DateTime                              @default(now()) @updatedAt @db.Timestamptz(6)
-  is_active            Boolean                               @default(true)
-  users                users                                 @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  parent_department    rcm_departments?                      @relation("DepartmentHierarchy", fields: [parent_dept_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  child_departments    rcm_departments[]                     @relation("DepartmentHierarchy")
-  teams                teams                                 @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  resource_assignments rcm_resource_department_assignments[]
-
-  @@index([is_active], map: "idx_rcm_departments_is_active")
-  @@index([name], map: "idx_rcm_departments_name")
-  @@index([team_id], map: "idx_rcm_departments_team_id")
-}
-
-model rcm_resource_department_assignments {
-  id            String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  resource_id   String          @db.Uuid
-  department_id String          @db.Uuid
-  is_primary    Boolean         @default(false)
-  assigned_at   DateTime        @default(now()) @db.Timestamptz(6)
-  assigned_by   String          @db.Uuid
-  users         users           @relation(fields: [assigned_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  department    rcm_departments @relation(fields: [department_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  resource      rcm_resources   @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@unique([resource_id, department_id], map: "rcm_resource_dept_unique")
-  @@index([department_id], map: "idx_rcm_res_dept_department_id")
-  @@index([resource_id], map: "idx_rcm_res_dept_resource_id")
-}
-
-model rcm_skills {
-  id              String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name            String                @db.VarChar(100)
-  description     String?
-  category        String?               @db.VarChar(100)
-  team_id         String                @db.Uuid
-  created_by      String                @db.Uuid
-  created_at      DateTime              @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime              @default(now()) @updatedAt @db.Timestamptz(6)
-  is_active       Boolean               @default(true)
-  resource_skills rcm_resource_skills[]
-  users           users                 @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  teams           teams                 @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@unique([team_id, name], map: "rcm_skills_name_team_unique")
-  @@index([is_active], map: "idx_rcm_skills_is_active")
-  @@index([name], map: "idx_rcm_skills_name")
-  @@index([team_id], map: "idx_rcm_skills_team_id")
-}
-
-model rcm_resource_skills {
-  id               String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  resource_id      String                @db.Uuid
-  skill_id         String                @db.Uuid
-  proficiency      rcm_proficiency_level
-  years_experience Int?
-  assigned_at      DateTime              @default(now()) @db.Timestamptz(6)
-  assigned_by      String                @db.Uuid
-  users            users                 @relation(fields: [assigned_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  resource         rcm_resources         @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  skill            rcm_skills            @relation(fields: [skill_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@unique([resource_id, skill_id], map: "rcm_resource_skills_unique")
-  @@index([proficiency], map: "idx_rcm_resource_skills_proficiency")
-  @@index([resource_id], map: "idx_rcm_resource_skills_resource_id")
-  @@index([skill_id], map: "idx_rcm_resource_skills_skill_id")
-}
-
-model rcm_availability {
-  id                   String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  resource_id          String        @db.Uuid
-  effective_from       DateTime      @db.Date
-  effective_to         DateTime?     @db.Date
-  hours_per_day        Decimal       @db.Decimal(5, 2)
-  days_per_week        Decimal       @db.Decimal(3, 1)
-  total_hours_per_week Decimal       @db.Decimal(5, 2)
-  created_by           String        @db.Uuid
-  created_at           DateTime      @default(now()) @db.Timestamptz(6)
-  updated_at           DateTime      @default(now()) @updatedAt @db.Timestamptz(6)
-  users                users         @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  resource             rcm_resources @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([resource_id, effective_from, effective_to], map: "idx_rcm_availability_date_range")
-  @@index([effective_from], map: "idx_rcm_availability_effective_from")
-  @@index([resource_id], map: "idx_rcm_availability_resource_id")
-}
-
-model rcm_unavailability_periods {
-  id                  String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  resource_id         String                  @db.Uuid
-  unavailability_type rcm_unavailability_type
-  start_date          DateTime                @db.Date
-  end_date            DateTime                @db.Date
-  description         String?
-  created_by          String                  @db.Uuid
-  created_at          DateTime                @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
-  users               users                   @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  resource            rcm_resources           @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([resource_id, start_date, end_date], map: "idx_rcm_unavailability_date_range")
-  @@index([end_date], map: "idx_rcm_unavailability_end_date")
-  @@index([resource_id], map: "idx_rcm_unavailability_resource_id")
-  @@index([start_date], map: "idx_rcm_unavailability_start_date")
-  @@index([unavailability_type], map: "idx_rcm_unavailability_type")
-}
-
-model rcm_allocations {
-  id                 String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  resource_id        String        @db.Uuid
-  project_id         String        @db.Uuid
-  start_date         DateTime      @db.Date
-  end_date           DateTime      @db.Date
-  allocation_percent Decimal       @db.Decimal(7, 2)
-  notes              String?
-  created_by         String        @db.Uuid
-  created_at         DateTime      @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime      @default(now()) @updatedAt @db.Timestamptz(6)
-  is_active          Boolean       @default(true)
-  users              users         @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  projects           projects      @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  resource           rcm_resources @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([resource_id, start_date, end_date], map: "idx_rcm_allocations_date_range")
-  @@index([end_date], map: "idx_rcm_allocations_end_date")
-  @@index([is_active], map: "idx_rcm_allocations_is_active")
-  @@index([project_id], map: "idx_rcm_allocations_project_id")
-  @@index([resource_id], map: "idx_rcm_allocations_resource_id")
-  @@index([start_date], map: "idx_rcm_allocations_start_date")
-}
-
-model inv_suppliers {
-  id             String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name           String           @db.VarChar(200)
-  contact_person String?          @db.VarChar(100)
-  email          String?          @db.VarChar(255)
-  phone          String?          @db.VarChar(50)
-  address        String?
-  notes          String?
-  team_id        String           @db.Uuid
-  created_by     String           @db.Uuid
-  created_at     DateTime         @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime         @default(now()) @updatedAt @db.Timestamptz(6)
-  is_active      Boolean          @default(true)
-  components     inv_components[]
-  users          users            @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  teams          teams            @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@unique([team_id, name], map: "inv_suppliers_name_team_unique")
-  @@index([is_active], map: "idx_inv_suppliers_is_active")
-  @@index([name], map: "idx_inv_suppliers_name")
-  @@index([team_id], map: "idx_inv_suppliers_team_id")
-}
-
-model inv_storage_locations {
-  id                 String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  location_code      String                  @db.VarChar(50)
-  name               String                  @db.VarChar(200)
-  description        String?
-  parent_location_id String?                 @db.Uuid
-  team_id            String                  @db.Uuid
-  created_by         String                  @db.Uuid
-  created_at         DateTime                @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
-  is_active          Boolean                 @default(true)
-  components         inv_components[]
-  users              users                   @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  parent_location    inv_storage_locations?  @relation("LocationHierarchy", fields: [parent_location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  child_locations    inv_storage_locations[] @relation("LocationHierarchy")
-  teams              teams                   @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@unique([team_id, location_code], map: "inv_storage_locations_code_team_unique")
-  @@index([is_active], map: "idx_inv_storage_locations_is_active")
-  @@index([location_code], map: "idx_inv_storage_locations_location_code")
-  @@index([team_id], map: "idx_inv_storage_locations_team_id")
-}
-
-model inv_components {
-  id                  String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                String                 @db.VarChar(200)
-  sku                 String?                @db.VarChar(100)
-  description         String?
-  category            String?                @db.VarChar(100)
-  owner_type          inv_owner_type
-  supplier_id         String?                @db.Uuid
-  storage_location_id String?                @db.Uuid
-  quantity            Int                    @default(0)
-  unit                String?                @db.VarChar(50)
-  unit_cost           Decimal?               @db.Decimal(10, 2)
-  reorder_level       Int?                   @default(0)
-  qr_code_data        String?
-  qr_code_image       String?
-  team_id             String                 @db.Uuid
-  created_by          String                 @db.Uuid
-  created_at          DateTime               @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
-  is_active           Boolean                @default(true)
-  barcode_mappings    inv_barcode_mappings[]
-  users               users                  @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  storage_location    inv_storage_locations? @relation(fields: [storage_location_id], references: [id], onUpdate: NoAction)
-  supplier            inv_suppliers?         @relation(fields: [supplier_id], references: [id], onUpdate: NoAction)
-  teams               teams                  @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  transactions        inv_transactions[]
-
-  @@index([is_active], map: "idx_inv_components_is_active")
-  @@index([owner_type], map: "idx_inv_components_owner_type")
-  @@index([team_id], map: "idx_inv_components_team_id")
-}
-
-model inv_transactions {
-  id               String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  component_id     String               @db.Uuid
-  transaction_type inv_transaction_type
-  quantity         Int
-  quantity_before  Int
-  quantity_after   Int
-  unit_cost        Decimal?             @db.Decimal(10, 2)
-  reference_number String?              @db.VarChar(100)
-  notes            String?
-  transaction_date DateTime             @default(now()) @db.Timestamptz(6)
-  team_id          String               @db.Uuid
-  created_by       String               @db.Uuid
-  created_at       DateTime             @default(now()) @db.Timestamptz(6)
-  is_active        Boolean              @default(true)
-  component        inv_components       @relation(fields: [component_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users            users                @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  teams            teams                @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([component_id], map: "idx_inv_transactions_component_id")
-  @@index([is_active], map: "idx_inv_transactions_is_active")
-  @@index([team_id], map: "idx_inv_transactions_team_id")
-  @@index([transaction_date], map: "idx_inv_transactions_transaction_date")
-  @@index([transaction_type], map: "idx_inv_transactions_transaction_type")
-}
-
-model inv_barcode_mappings {
-  id           String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  component_id String           @db.Uuid
-  barcode_type inv_barcode_type
-  barcode_data String
-  team_id      String           @db.Uuid
-  created_by   String           @db.Uuid
-  created_at   DateTime         @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime         @default(now()) @updatedAt @db.Timestamptz(6)
-  is_active    Boolean          @default(true)
-  component    inv_components   @relation(fields: [component_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users        users            @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  teams        teams            @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@unique([component_id, barcode_type], map: "inv_barcode_mappings_component_type_unique")
-  @@index([barcode_type], map: "idx_inv_barcode_mappings_barcode_type")
-  @@index([component_id], map: "idx_inv_barcode_mappings_component_id")
-  @@index([is_active], map: "idx_inv_barcode_mappings_is_active")
-  @@index([team_id], map: "idx_inv_barcode_mappings_team_id")
-}
-
-model archived_projects {
-  user_id    String   @db.Uuid
-  project_id String   @db.Uuid
-  projects   projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "archived_projects_project_id_fk")
-  users      users    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "archived_projects_user_id_fk")
-
-  @@id([user_id, project_id], map: "archived_projects_pk")
-}
-
-model bounced_emails {
-  id         String   @id(map: "bounced_emails_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  email      String   @unique(map: "bounced_emails_email_uindex")
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @db.Timestamptz(6)
-}
-
-model cc_column_configurations {
-  id                        String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  column_id                 String            @db.Uuid
-  field_title               String?
-  field_type                String?
-  number_type               String?
-  decimals                  Int?
-  label                     String?
-  label_position            String?
-  preview_value             String?
-  expression                String?
-  first_numeric_column_key  String?
-  second_numeric_column_key String?
-  created_at                DateTime?         @default(now()) @db.Timestamptz(6)
-  updated_at                DateTime?         @default(now()) @db.Timestamptz(6)
-  cc_custom_columns         cc_custom_columns @relation(fields: [column_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-model cc_column_values {
-  id                String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  task_id           String            @db.Uuid
-  column_id         String            @db.Uuid
-  text_value        String?
-  number_value      Decimal?          @db.Decimal(18, 6)
-  date_value        DateTime?         @db.Timestamptz(6)
-  boolean_value     Boolean?
-  json_value        Json?
-  created_at        DateTime?         @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime?         @default(now()) @db.Timestamptz(6)
-  cc_custom_columns cc_custom_columns @relation(fields: [column_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  tasks             tasks             @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@unique([task_id, column_id])
-  @@index([task_id], map: "idx_cc_column_values_task")
-}
-
-model cc_custom_columns {
-  id                       String                     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  project_id               String                     @db.Uuid
-  name                     String
-  key                      String
-  field_type               String
-  width                    Int?                       @default(150)
-  is_visible               Boolean?                   @default(true)
-  is_custom_column         Boolean?                   @default(true)
-  created_at               DateTime?                  @default(now()) @db.Timestamptz(6)
-  updated_at               DateTime?                  @default(now()) @db.Timestamptz(6)
-  cc_column_configurations cc_column_configurations[]
-  cc_column_values         cc_column_values[]
-  projects                 projects                   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  cc_label_options         cc_label_options[]
-  cc_selection_options     cc_selection_options[]
-
-  @@unique([project_id, key])
-}
-
-model cc_label_options {
-  id                String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  column_id         String            @db.Uuid
-  label_id          String
-  label_name        String
-  label_color       String?
-  label_order       Int
-  created_at        DateTime?         @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime?         @default(now()) @db.Timestamptz(6)
-  cc_custom_columns cc_custom_columns @relation(fields: [column_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-model cc_selection_options {
-  id                String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  column_id         String            @db.Uuid
-  selection_id      String
-  selection_name    String
-  selection_color   String?
-  selection_order   Int
-  created_at        DateTime?         @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime?         @default(now()) @db.Timestamptz(6)
-  cc_custom_columns cc_custom_columns @relation(fields: [column_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model clients {
-  id         String     @id(map: "clients_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name       String
-  team_id    String     @db.Uuid
-  created_at DateTime   @default(now()) @db.Timestamptz(6)
-  updated_at DateTime   @default(now()) @db.Timestamptz(6)
-  teams      teams      @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "clients_team_id_fk")
-  projects   projects[]
-
-  @@unique([name, team_id], map: "clients_name_team_id_uindex")
-  @@index([id, team_id], map: "clients_id_team_id_index")
-}
-
-model countries {
-  id       String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  code     String  @db.Char(2)
-  name     String  @db.VarChar(150)
-  phone    Int
-  currency String? @db.VarChar(3)
-}
-
-model cpt_phases {
-  id                       String                   @id(map: "cpt_phases_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                     String
-  color_code               String
-  template_id              String                   @db.Uuid
-  created_at               DateTime                 @default(now()) @db.Timestamptz(6)
-  custom_project_templates custom_project_templates @relation(fields: [template_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cpt_phases_template_id_fk")
-  cpt_task_phases          cpt_task_phases[]
-
-  @@unique([name, template_id], map: "cpt_phases_name_project_uindex")
-}
-
-model cpt_task_labels {
-  task_id     String      @db.Uuid
-  label_id    String      @db.Uuid
-  team_labels team_labels @relation(fields: [label_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cpt_task_labels_label_id_fk")
-  cpt_tasks   cpt_tasks   @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cpt_task_labels_task_id_fk")
-
-  @@id([task_id, label_id], map: "cpt_task_labels_pk")
-}
-
-model cpt_task_phases {
-  task_id    String     @unique(map: "cpt_task_phase_task_id_uindex") @db.Uuid
-  phase_id   String     @db.Uuid
-  cpt_phases cpt_phases @relation(fields: [phase_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cpt_task_phase_phase_id_fk")
-  cpt_tasks  cpt_tasks  @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cpt_task_phase_task_id_fk")
-
-  @@unique([task_id, phase_id], map: "cpt_task_phase_cpt_task_phase_uindex")
-}
-
-model cpt_task_statuses {
-  id                         String                     @id(map: "cpt_task_statuses_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                       String
-  template_id                String                     @db.Uuid
-  team_id                    String                     @db.Uuid
-  category_id                String                     @db.Uuid
-  sort_order                 Int                        @default(0)
-  sys_task_status_categories sys_task_status_categories @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cpt_task_statuses_category_id_fk")
-  teams                      teams                      @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cpt_task_statuses_team_id_fk")
-  custom_project_templates   custom_project_templates   @relation(fields: [template_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cpt_task_statuses_template_id_fk")
-  cpt_tasks                  cpt_tasks[]
-
-  @@unique([template_id, name], map: "cpt_task_statuses_template_id_name_uindex")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
-model cpt_tasks {
-  id                       String                   @id(map: "cpt_tasks_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                     String
-  description              String?
-  total_minutes            Decimal                  @default(0) @db.Decimal
-  sort_order               Int                      @default(0)
-  task_no                  BigInt?
-  original_task_id         String?                  @db.Uuid
-  priority_id              String                   @db.Uuid
-  template_id              String                   @db.Uuid
-  parent_task_id           String?                  @db.Uuid
-  status_id                String                   @db.Uuid
-  created_at               DateTime                 @default(now()) @db.Timestamptz(6)
-  updated_at               DateTime                 @default(now()) @db.Timestamptz(6)
-  cpt_task_labels          cpt_task_labels[]
-  cpt_task_phases          cpt_task_phases?
-  task_priorities          task_priorities          @relation(fields: [priority_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cpt_tasks_priority_fk")
-  cpt_task_statuses        cpt_task_statuses        @relation(fields: [status_id], references: [id], onUpdate: NoAction, map: "cpt_tasks_status_id_fk")
-  custom_project_templates custom_project_templates @relation(fields: [template_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cpt_tasks_template_fk")
-
-  @@unique([template_id, sort_order], map: "cpt_tasks_sort_order_unique")
-}
-
-model custom_project_templates {
-  id                String              @id(map: "custom_project_templates_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name              String
-  phase_label       String              @default("Phase")
-  team_id           String              @db.Uuid
-  created_at        DateTime            @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime            @default(now()) @db.Timestamptz(6)
-  color_code        String
-  notes             String?
-  cpt_phases        cpt_phases[]
-  cpt_task_statuses cpt_task_statuses[]
-  cpt_tasks         cpt_tasks[]
-  teams             teams               @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "custom_project_templates_team_id_fk")
-
-  @@unique([name, team_id], map: "custom_project_templates_name_team_id_uindex")
-}
-
-model email_invitations {
-  id             String        @id(map: "email_invitations_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name           String
-  email          String
-  team_id        String?       @db.Uuid
-  team_member_id String?       @db.Uuid
-  created_at     DateTime      @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime      @default(now()) @db.Timestamptz(6)
-  teams          teams?        @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "email_invitations_team_id_fk")
-  team_members   team_members? @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "email_invitations_team_member_id_fk")
-
-  @@index([team_member_id], map: "idx_email_invitations_team_member")
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model email_logs {
-  id         String    @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  email      String
-  subject    String
-  html       String
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-
-  @@ignore
-}
-
-model favorite_projects {
-  user_id    String   @db.Uuid
-  project_id String   @db.Uuid
-  projects   projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "favorite_projects_project_id_fk")
-  users      users    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "favorite_projects_user_id_fk")
-
-  @@id([user_id, project_id], map: "favorite_projects_pk")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model job_titles {
-  id           String         @id(map: "job_titles_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name         String
-  team_id      String         @db.Uuid
-  teams        teams          @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "job_titles_team_id_fk")
-  team_members team_members[]
-
-  @@unique([name, team_id], map: "job_titles_name_team_id_uindex")
-  @@index([team_id], map: "job_titles_team_id_index")
-}
-
-model licensing_admin_users {
-  id                         String                       @id(map: "licensing_admin_users_id_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                       String                       @unique(map: "licensing_admin_users_name_uindex")
-  username                   String                       @unique(map: "licensing_admin_users_username_uindex")
-  phone_no                   String                       @unique(map: "licensing_admin_users_phone_no_uindex")
-  otp                        String?
-  otp_expiry                 DateTime?                    @db.Timestamptz(6)
-  active                     Boolean                      @default(true)
-  licensing_app_sumo_batches licensing_app_sumo_batches[]
-  licensing_coupon_codes     licensing_coupon_codes[]
-  licensing_credit_subs      licensing_credit_subs[]
-  licensing_custom_subs_logs licensing_custom_subs_logs[]
-}
-
-model licensing_app_sumo_batches {
-  id                    String                @id(map: "licensing_app_sumo_batches_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                  String
-  created_at            DateTime?             @default(now()) @db.Timestamptz(6)
-  created_by            String                @db.Uuid
-  licensing_admin_users licensing_admin_users @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_app_sumo_batches_created_by_fk")
-}
-
-model licensing_coupon_codes {
-  id                    String                @id(map: "licensing_coupon_codes_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  coupon_code           String                @unique(map: "licensing_coupon_codes_coupon_code_uindex")
-  is_redeemed           Boolean?              @default(false)
-  is_app_sumo           Boolean?              @default(false)
-  projects_limit        Int?
-  team_members_limit    Int?                  @default(3)
-  storage_limit         Int?                  @default(5)
-  redeemed_by           String?               @db.Uuid
-  batch_id              String?               @db.Uuid
-  created_by            String                @db.Uuid
-  created_at            DateTime?             @default(now()) @db.Timestamptz(6)
-  redeemed_at           DateTime?             @db.Timestamptz(6)
-  is_refunded           Boolean?              @default(false)
-  reason                String?
-  feedback              String?
-  refunded_at           DateTime?             @db.Timestamptz(6)
-  licensing_admin_users licensing_admin_users @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_coupon_codes_created_by_fk")
-  users                 users?                @relation(fields: [redeemed_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_coupon_codes_users_id_fk")
-
-  @@index([redeemed_by], map: "licensing_coupon_codes_redeemed_by_index")
-}
-
-model licensing_coupon_logs {
-  id          String    @id(map: "licensing_coupon_logs_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  coupon_code String
-  redeemed_by String    @db.Uuid
-  redeemed_at DateTime  @db.Timestamptz(6)
-  is_refunded Boolean   @default(true)
-  reason      String?
-  reverted_at DateTime? @default(now()) @db.Timestamptz(6)
-  feedback    String?
-  users       users     @relation(fields: [redeemed_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_coupon_logs_users_id_fk")
-}
-
-model licensing_credit_subs {
-  id                      String                  @id(map: "licensing_credit_subs_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  next_plan_id            String                  @db.Uuid
-  user_id                 String                  @db.Uuid
-  credit_given            Decimal                 @db.Decimal
-  created_at              DateTime                @default(now()) @db.Timestamptz(6)
-  created_by              String                  @db.Uuid
-  checkout_url            String?
-  credit_balance          Decimal?                @default(0) @db.Decimal
-  licensing_admin_users   licensing_admin_users   @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_credit_subs_created_by_fk")
-  licensing_pricing_plans licensing_pricing_plans @relation(fields: [next_plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_credit_subs_next_plan_id_fk")
-  users                   users                   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_credit_subs_user_id_fk")
-}
-
-model licensing_custom_subs {
-  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id      String   @db.Uuid
-  billing_type String   @default("year")
-  currency     String   @default("LKR")
-  rate         Decimal  @default(0) @db.Decimal
-  created_at   DateTime @default(now()) @db.Timestamptz(6)
-  end_date     DateTime @db.Date
-  user_limit   Int?
-  users        users    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_custom_subs_users_id_fk")
-}
-
-model licensing_custom_subs_logs {
-  id                    String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  subscription_id       String                @db.Uuid
-  log_text              String
-  description           String?
-  admin_user_id         String                @db.Uuid
-  created_at            DateTime              @default(now()) @db.Timestamptz(6)
-  licensing_admin_users licensing_admin_users @relation(fields: [admin_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_custom_subs_logs_licensing_admin_users_id_fk")
-}
-
-model licensing_payment_details {
-  id                      String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id                 String?                  @db.Uuid
-  alert_id                String
-  alert_name              String
-  balance_currency        String?                  @default("USD")
-  balance_earnings        Decimal                  @default(0) @db.Decimal
-  balance_fee             Decimal                  @default(0) @db.Decimal
-  balance_gross           Decimal                  @default(0) @db.Decimal
-  balance_tax             Decimal                  @default(0) @db.Decimal
-  checkout_id             String
-  country                 String
-  coupon                  String
-  currency                String                   @default("USD")
-  custom_data             String?
-  customer_name           String
-  earnings                Decimal                  @default(0) @db.Decimal
-  email                   String
-  event_time              String
-  fee                     Decimal                  @default(0) @db.Decimal
-  initial_payment         Decimal                  @default(1) @db.Decimal
-  instalments             Decimal                  @default(1) @db.Decimal
-  marketing_consent       Int?                     @default(0)
-  next_bill_date          DateTime                 @db.Date
-  next_payment_amount     Decimal                  @default(0) @db.Decimal
-  order_id                String
-  p_signature             String
-  passthrough             String?
-  payment_method          String                   @default("card")
-  payment_tax             Decimal?                 @default(0) @db.Decimal
-  plan_name               String
-  quantity                Decimal                  @default(0) @db.Decimal
-  receipt_url             String
-  sale_gross              String                   @default(dbgenerated("0"))
-  status                  String
-  subscription_id         String
-  subscription_payment_id String
-  subscription_plan_id    Int?
-  unit_price              Decimal                  @default(0) @db.Decimal
-  paddle_user_id          String
-  created_at              DateTime                 @default(now()) @db.Timestamptz(6)
-  payment_status          String                   @default("success")
-  licensing_pricing_plans licensing_pricing_plans? @relation(fields: [subscription_plan_id], references: [paddle_id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_payment_details_licensing_pricing_plans_paddle_id_fk")
-  users                   users?                   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_payment_details_users_id_fk")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model licensing_pricing_plans {
-  id                                                                                  String                         @id(map: "licensing_pricing_plans_pk") @unique(map: "licensing_pricing_plans_uindex") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                                                                                String                         @default("")
-  billing_type                                                                        String                         @default("month")
-  billing_period                                                                      Int                            @default(1)
-  default_currency                                                                    String                         @default("USD")
-  initial_price                                                                       String                         @default("0")
-  recurring_price                                                                     String                         @default("0")
-  trial_days                                                                          Int                            @default(0)
-  paddle_id                                                                           Int?                           @unique @default(0)
-  active                                                                              Boolean                        @default(false)
-  is_startup_plan                                                                     Boolean                        @default(false)
-  licensing_credit_subs                                                               licensing_credit_subs[]
-  licensing_payment_details                                                           licensing_payment_details[]
-  licensing_settings_licensing_settings_default_startup_planTolicensing_pricing_plans licensing_settings[]           @relation("licensing_settings_default_startup_planTolicensing_pricing_plans") @ignore
-  licensing_settings_licensing_settings_default_monthly_planTolicensing_pricing_plans licensing_settings[]           @relation("licensing_settings_default_monthly_planTolicensing_pricing_plans") @ignore
-  licensing_settings_licensing_settings_default_annual_planTolicensing_pricing_plans  licensing_settings[]           @relation("licensing_settings_default_annual_planTolicensing_pricing_plans") @ignore
-  licensing_user_subscriptions                                                        licensing_user_subscriptions[]
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model licensing_settings {
-  default_trial_storage                                                                    Decimal                  @default(1) @db.Decimal
-  default_storage                                                                          Decimal                  @default(25) @db.Decimal
-  storage_addon_price                                                                      Decimal                  @default(0) @db.Decimal
-  storage_addon_size                                                                       Decimal?                 @default(0) @db.Decimal
-  default_monthly_plan                                                                     String?                  @db.Uuid
-  default_annual_plan                                                                      String?                  @db.Uuid
-  default_startup_plan                                                                     String?                  @db.Uuid
-  projects_limit                                                                           Int                      @default(5)
-  team_member_limit                                                                        Int                      @default(0)
-  free_tier_storage                                                                        Int                      @default(5)
-  trial_duration                                                                           Int                      @default(14)
-  licensing_pricing_plans_licensing_settings_default_startup_planTolicensing_pricing_plans licensing_pricing_plans? @relation("licensing_settings_default_startup_planTolicensing_pricing_plans", fields: [default_startup_plan], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_settings_licensing_pricing_plans_id_fk")
-  licensing_pricing_plans_licensing_settings_default_monthly_planTolicensing_pricing_plans licensing_pricing_plans? @relation("licensing_settings_default_monthly_planTolicensing_pricing_plans", fields: [default_monthly_plan], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_settings_licensing_user_plans_id_fk")
-  licensing_pricing_plans_licensing_settings_default_annual_planTolicensing_pricing_plans  licensing_pricing_plans? @relation("licensing_settings_default_annual_planTolicensing_pricing_plans", fields: [default_annual_plan], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_settings_licensing_user_plans_id_fk_2")
-
-  @@ignore
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model licensing_user_subscription_modifiers {
-  subscription_id Int
-  modifier_id     Int
-  created_at      DateTime @default(now()) @db.Timestamptz(6)
-
-  @@ignore
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model licensing_user_subscriptions {
-  id                          String                  @id(map: "licensing_user_plans_pk") @unique(map: "licensing_user_plans_uindex") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id                     String                  @db.Uuid
-  paddle_user_id              Int?
-  cancel_url                  String?
-  update_url                  String?
-  checkout_id                 String?
-  next_bill_date              String?
-  quantity                    Int                     @default(1)
-  subscription_id             Int?                    @unique
-  subscription_plan_id        Int?
-  unit_price                  Decimal?                @db.Decimal
-  plan_id                     String                  @db.Uuid
-  status                      String?
-  custom_value_month          Decimal                 @default(0) @db.Decimal
-  custom_value_year           Decimal                 @default(0) @db.Decimal
-  custom_storage_amount       Decimal                 @default(0) @db.Decimal
-  custom_storage_unit         String                  @default("MB")
-  cancellation_effective_date DateTime?               @db.Date
-  currency                    String                  @default("USD")
-  event_time                  String?
-  paused_at                   String?
-  paused_from                 String?
-  paused_reason               String?
-  active                      Boolean?                @default(true)
-  licensing_pricing_plans     licensing_pricing_plans @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_user_subscriptions_licensing_pricing_plans_id_fk")
-  users                       users                   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "licensing_user_subscriptions_users_id_fk")
-
-  @@index([user_id], map: "licensing_user_subscriptions_user_id_index")
-}
-
-model notification_settings {
-  email_notifications_enabled Boolean @default(true)
-  popup_notifications_enabled Boolean @default(true)
-  show_unread_items_count     Boolean @default(true)
-  daily_digest_enabled        Boolean @default(false)
-  user_id                     String  @db.Uuid
-  team_id                     String  @db.Uuid
-  teams                       teams   @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "notification_settings_team_id_fk")
-  users                       users   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "notification_settings_user_id_fk")
-
-  @@id([user_id, team_id], map: "notification_settings_pk")
-  @@index([user_id, team_id], map: "idx_notification_settings_user_team")
-  @@index([team_id, user_id], map: "notification_settings_team_user_id_index")
-}
-
-model organization_working_days {
-  id              String        @id(map: "organization_working_days_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  monday          Boolean       @default(true)
-  tuesday         Boolean       @default(true)
-  wednesday       Boolean       @default(true)
-  thursday        Boolean       @default(true)
-  friday          Boolean       @default(true)
-  saturday        Boolean       @default(false)
-  sunday          Boolean       @default(false)
-  organization_id String        @db.Uuid
-  created_at      DateTime      @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
-  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "org_organization_id_fk")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model organizations {
-  id                        String                      @id(map: "organizations_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  organization_name         String
-  contact_number            String?
-  contact_number_secondary  String?
-  address_line_1            String?
-  address_line_2            String?
-  country                   String?                     @db.Uuid
-  city                      String?
-  state                     String?
-  postal_code               String?
-  trial_in_progress         Boolean                     @default(false)
-  trial_expire_date         DateTime?                   @db.Date
-  subscription_status       String                      @default("active")
-  storage                   Int                         @default(1)
-  updating_plan             Boolean?                    @default(false)
-  user_id                   String                      @unique(map: "organizations_pk_2") @db.Uuid
-  created_at                DateTime?                   @default(now()) @db.Timestamptz(6)
-  updated_at                DateTime?                   @default(now()) @db.Timestamptz(6)
-  license_type_id           String?                     @db.Uuid
-  is_lkr_billing            Boolean?                    @default(false)
-  working_hours             Float                       @default(8)
-  organization_working_days organization_working_days[]
-  users                     users                       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "organization_user_id_pk")
-  teams                     teams[]
-}
-
-model permissions {
-  id               String             @id(map: "permissions_pk")
-  name             String             @unique(map: "permissions_name_uindex")
-  description      String
-  role_permissions role_permissions[]
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model personal_todo_list {
-  id          String   @id(map: "personal_todo_list_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name        String
-  description String?
-  color_code  String
-  done        Boolean  @default(false)
-  index       Int?     @default(0)
-  user_id     String   @db.Uuid
-  created_at  DateTime @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime @default(now()) @db.Timestamptz(6)
-  users       users    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "personal_todo_list_user_id_fk")
-
-  @@unique([user_id, index], map: "personal_todo_list_index_uindex")
-}
-
-model pg_sessions {
-  sid    String   @id @db.VarChar
-  sess   Json     @db.Json
-  expire DateTime @db.Timestamp(6)
-
-  @@index([expire], map: "idx_pg_sessions_expire")
-}
-
-model project_access_levels {
-  id              String            @id(map: "project_access_levels_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name            String            @unique(map: "project_access_levels_name_uindex")
-  key             String            @unique(map: "project_access_levels_key_uindex")
-  project_members project_members[]
-}
-
-model project_categories {
-  id         String     @id(map: "project_categories_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name       String
-  color_code String     @default("#70a6f3")
-  team_id    String     @db.Uuid
-  created_by String     @db.Uuid
-  created_at DateTime   @default(now()) @db.Timestamptz(6)
-  updated_at DateTime   @default(now()) @db.Timestamptz(6)
-  users      users      @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_categories_created_by_fk")
-  teams      teams      @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_categories_team_id_fk")
-  projects   projects[]
-
-  @@unique([name, team_id], map: "project_categories_name_team_id_uindex")
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model project_comment_mentions {
-  comment_id                                         String           @db.Uuid
-  mentioned_index                                    Int
-  mentioned_by                                       String           @db.Uuid
-  informed_by                                        String           @db.Uuid
-  created_at                                         DateTime         @default(now()) @db.Timestamptz(6)
-  project_comments                                   project_comments @relation(fields: [comment_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_comment_mentions_comment_id_fk")
-  users_project_comment_mentions_informed_byTousers  users            @relation("project_comment_mentions_informed_byTousers", fields: [informed_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_comment_mentions_informed_by_fk")
-  users_project_comment_mentions_mentioned_byTousers users            @relation("project_comment_mentions_mentioned_byTousers", fields: [mentioned_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_comment_mentions_mentioned_by_fk")
-
-  @@ignore
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model project_comments {
-  id                       String                     @id(map: "project_comments_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  content                  String
-  created_by               String                     @db.Uuid
-  project_id               String                     @db.Uuid
-  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
-  updated_at               DateTime                   @default(now()) @db.Timestamptz(6)
-  project_comment_mentions project_comment_mentions[] @ignore
-  users                    users                      @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_comments_created_by_fk")
-  projects                 projects                   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_comments_project_id_fk")
-
-  @@index([project_id], map: "project_comments_project_id_index")
-}
-
-model project_folders {
-  id                    String            @id(map: "project_folders_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                  String
-  key                   String
-  color_code            String            @default("#70a6f3")
-  created_by            String            @db.Uuid
-  parent_folder_id      String?           @db.Uuid
-  team_id               String            @db.Uuid
-  created_at            DateTime          @default(now()) @db.Timestamptz(6)
-  updated_at            DateTime          @default(now()) @db.Timestamptz(6)
-  users                 users             @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_folders_created_by_fk")
-  project_folders       project_folders?  @relation("project_foldersToproject_folders", fields: [parent_folder_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_folders_parent_folder_fk")
-  other_project_folders project_folders[] @relation("project_foldersToproject_folders")
-  teams                 teams             @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_folders_team_id_fk")
-  projects              projects[]
-
-  @@unique([team_id, key], map: "project_folders_team_id_key_uindex")
-  @@unique([team_id, name], map: "project_folders_team_id_name_uindex")
-}
-
-model project_logs {
-  id          String   @id(map: "project_logs_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  team_id     String   @db.Uuid
-  project_id  String   @db.Uuid
-  description String
-  created_at  DateTime @default(now()) @db.Timestamptz(6)
-  projects    projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_logs_projects_id_fk")
-  teams       teams    @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_logs_teams_id_fk")
-}
-
-model project_member_allocations {
-  id              String       @id(map: "project_member_allocations_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  project_id      String       @db.Uuid
-  team_member_id  String       @db.Uuid
-  allocated_from  DateTime     @db.Timestamptz(6)
-  allocated_to    DateTime     @db.Timestamptz(6)
-  seconds_per_day Int?
-  projects        projects     @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_members_allocations_project_id_fk")
-  team_members    team_members @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_members_allocations_team_member_id_fk")
-}
-
-model project_members {
-  id                      String                @id(map: "project_members_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  team_member_id          String                @db.Uuid
-  project_access_level_id String                @db.Uuid
-  project_id              String                @db.Uuid
-  role_id                 String                @db.Uuid
-  created_at              DateTime              @default(now()) @db.Timestamptz(6)
-  default_view            String                @default("TASK_LIST")
-  project_access_levels   project_access_levels @relation(fields: [project_access_level_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_members_access_level_fk")
-  projects                projects              @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_members_project_id_fk")
-  roles                   roles                 @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_members_role_id_fk")
-  team_members            team_members          @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_members_team_member_id_fk")
-  tasks_assignees         tasks_assignees[]
-
-  @@unique([team_member_id, project_id], map: "project_members_team_member_project_uindex")
-  @@index([project_id], map: "project_members_project_id_index")
-  @@index([project_id, team_member_id], map: "project_members_project_id_member_id_index")
-  @@index([team_member_id], map: "project_members_team_member_id_index")
-}
-
-model project_phases {
-  id         String       @id(map: "project_phases_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name       String
-  color_code String
-  project_id String       @db.Uuid
-  created_at DateTime     @default(now()) @db.Timestamptz(6)
-  start_date DateTime?    @db.Timestamptz(6)
-  end_date   DateTime?    @db.Timestamptz(6)
-  sort_index Int?         @default(0)
-  projects   projects     @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_phases_project_id_fk")
-  task_phase task_phase[] @ignore
-
-  @@unique([name, project_id], map: "project_phases_name_project_uindex")
-  @@index([project_id, sort_index], map: "idx_project_phases_project_sort")
-}
-
-model project_subscribers {
-  id             String       @id(map: "project_subscribers_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id        String       @db.Uuid
-  project_id     String       @db.Uuid
-  team_member_id String       @db.Uuid
-  created_at     DateTime     @default(now()) @db.Timestamptz(6)
-  projects       projects     @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_subscribers_project_id_fk")
-  team_members   team_members @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_subscribers_team_member_id_fk")
-  users          users        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "project_subscribers_user_id_fk")
-
-  @@unique([user_id, project_id, team_member_id], map: "project_subscribers_user_task_team_member_uindex")
-}
-
-model project_task_list_cols {
-  id                String               @id(map: "project_task_list_cols_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name              String
-  key               wl_task_list_col_key
-  index             Int                  @default(0)
-  pinned            Boolean              @default(true)
-  project_id        String               @db.Uuid
-  custom_column     Boolean?             @default(false)
-  custom_column_obj Json?
-  projects          projects             @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "project_task_list_cols_project_fk")
-
-  @@unique([key, project_id], map: "project_task_list_cols_key_project_uindex")
-  @@index([project_id, index], map: "project_task_list_cols_index")
-}
-
-model pt_labels {
-  id                   String                @id(map: "pt_project_templates_labels_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                 String
-  color_code           String
-  template_id          String?               @db.Uuid
-  pt_project_templates pt_project_templates? @relation(fields: [template_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "pt_labels_pt_project_templates_id_fk")
-  pt_task_labels       pt_task_labels[]
-}
-
-model pt_phases {
-  id                   String               @id(map: "pt_project_template_phases_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                 String
-  color_code           String?
-  template_id          String               @db.Uuid
-  pt_project_templates pt_project_templates @relation(fields: [template_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "pt_project_template_phases_template_id_fk")
-  pt_task_phases       pt_task_phases[]     @ignore
-}
-
-model pt_project_templates {
-  id               String             @id(map: "pt_project_templates_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name             String
-  key              String             @unique(map: "pt_project_templates_key_unique")
-  description      String?
-  phase_label      String?
-  image_url        String?
-  color_code       String             @default("#3b7ad4")
-  pt_labels        pt_labels[]
-  pt_phases        pt_phases[]
-  pt_statuses      pt_statuses[]
-  pt_task_statuses pt_task_statuses[]
-  pt_tasks         pt_tasks[]
-}
-
-model pt_statuses {
-  id                         String                     @id(map: "pt_project_template_statuses_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                       String
-  template_id                String                     @db.Uuid
-  category_id                String                     @db.Uuid
-  sys_task_status_categories sys_task_status_categories @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "pt_project_template_statuses_category_id_fk")
-  pt_project_templates       pt_project_templates       @relation(fields: [template_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "pt_project_template_statuses_template_id_fk")
-  pt_tasks                   pt_tasks[]
-}
-
-model pt_task_labels {
-  task_id   String    @db.Uuid
-  label_id  String    @db.Uuid
-  pt_labels pt_labels @relation(fields: [label_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "pt_task_labels_label_id_fk")
-  pt_tasks  pt_tasks  @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "pt_task_labels_task_id_fk")
-
-  @@id([task_id, label_id], map: "pt_task_labels_pk")
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model pt_task_phases {
-  task_id   String    @db.Uuid
-  phase_id  String    @db.Uuid
-  pt_phases pt_phases @relation(fields: [phase_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "pt_task_phase_phase_id_fk")
-  pt_tasks  pt_tasks  @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "pt_task_phase_task_id_fk")
-
-  @@ignore
-}
-
-model pt_task_statuses {
-  id                         String                     @id(map: "pt_task_statuses_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                       String
-  template_id                String                     @db.Uuid
-  team_id                    String                     @db.Uuid
-  category_id                String                     @db.Uuid
-  sort_order                 Int                        @default(0)
-  sys_task_status_categories sys_task_status_categories @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "pt_task_statuses_category_id_fk")
-  teams                      teams                      @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "pt_task_statuses_team_id_fk")
-  pt_project_templates       pt_project_templates       @relation(fields: [template_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "pt_task_statuses_template_id_fk")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
-model pt_tasks {
-  id                   String               @id(map: "pt_tasks_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                 String
-  description          String?
-  total_minutes        Decimal              @default(0) @db.Decimal
-  sort_order           Int                  @default(0)
-  priority_id          String               @db.Uuid
-  template_id          String               @db.Uuid
-  parent_task_id       String?              @db.Uuid
-  status_id            String               @db.Uuid
-  pt_task_labels       pt_task_labels[]
-  pt_task_phases       pt_task_phases[]     @ignore
-  pt_tasks             pt_tasks?            @relation("pt_tasksTopt_tasks", fields: [parent_task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "pt_tasks_parent_task_id_fk")
-  other_pt_tasks       pt_tasks[]           @relation("pt_tasksTopt_tasks")
-  task_priorities      task_priorities      @relation(fields: [priority_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "pt_tasks_priority_fk")
-  pt_statuses          pt_statuses          @relation(fields: [status_id], references: [id], onUpdate: NoAction, map: "pt_tasks_status_id_fk")
-  pt_project_templates pt_project_templates @relation(fields: [template_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "pt_tasks_template_fk")
-
-  @@unique([template_id, sort_order], map: "pt_tasks_sort_order_unique")
-}
-
-model role_permissions {
-  role_id       String      @db.Uuid
-  permission_id String
-  permissions   permissions @relation(fields: [permission_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "role_permissions_permission_id_fk")
-  roles         roles       @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "role_permissions_role_id_fk")
-
-  @@id([role_id, permission_id], map: "role_permissions_pk")
-}
-
-model roles {
-  id               String             @id(map: "roles_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name             String
-  team_id          String             @db.Uuid
-  default_role     Boolean            @default(false)
-  admin_role       Boolean            @default(false)
-  owner            Boolean            @default(false)
-  project_members  project_members[]
-  role_permissions role_permissions[]
-  team_members     team_members[]
-}
-
-model schema_migrations {
-  version    String    @id
-  applied_at DateTime? @default(now()) @db.Timestamp(6)
-}
-
-model spam_emails {
-  id         String   @id(map: "spam_emails_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  email      String
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @db.Timestamptz(6)
-}
-
-model survey_answers {
-  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  response_id      String           @db.Uuid
-  question_id      String           @db.Uuid
-  answer_text      String?
-  answer_json      Json?
-  created_at       DateTime         @default(now()) @db.Timestamp(6)
-  updated_at       DateTime         @default(now()) @db.Timestamp(6)
-  survey_questions survey_questions @relation(fields: [question_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  survey_responses survey_responses @relation(fields: [response_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@unique([response_id, question_id], map: "unique_response_question_answer")
-  @@index([response_id], map: "idx_survey_answers_response")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model survey_questions {
-  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  survey_id      String           @db.Uuid
-  question_key   String           @db.VarChar(100)
-  question_type  String           @db.VarChar(50)
-  is_required    Boolean          @default(false)
-  sort_order     Int              @default(0)
-  options        Json?
-  created_at     DateTime         @default(now()) @db.Timestamp(6)
-  updated_at     DateTime         @default(now()) @db.Timestamp(6)
-  survey_answers survey_answers[]
-  surveys        surveys          @relation(fields: [survey_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([survey_id, sort_order], map: "idx_survey_questions_survey_order")
-}
-
-model survey_responses {
-  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  survey_id      String           @db.Uuid
-  user_id        String           @db.Uuid
-  is_completed   Boolean          @default(false)
-  started_at     DateTime         @default(now()) @db.Timestamp(6)
-  completed_at   DateTime?        @db.Timestamp(6)
-  created_at     DateTime         @default(now()) @db.Timestamp(6)
-  updated_at     DateTime         @default(now()) @db.Timestamp(6)
-  survey_answers survey_answers[]
-  surveys        surveys          @relation(fields: [survey_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users          users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@unique([user_id, survey_id], map: "unique_user_survey_response")
-  @@index([survey_id, is_completed], map: "idx_survey_responses_completed")
-  @@index([user_id, survey_id], map: "idx_survey_responses_user_survey")
-}
-
-model surveys {
-  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name             String             @db.VarChar(255)
-  description      String?
-  survey_type      String             @default("account_setup") @db.VarChar(50)
-  is_active        Boolean            @default(true)
-  created_at       DateTime           @default(now()) @db.Timestamp(6)
-  updated_at       DateTime           @default(now()) @db.Timestamp(6)
-  survey_questions survey_questions[]
-  survey_responses survey_responses[]
-
-  @@index([survey_type, is_active], map: "idx_surveys_type_active")
-}
-
-model sys_license_types {
-  id          String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name        String
-  key         String
-  description String?
-}
-
-model sys_project_healths {
-  id         String  @id(map: "sys_project_healths_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name       String
-  color_code String
-  sort_order Int     @default(0)
-  is_default Boolean @default(false)
-}
-
-model sys_project_statuses {
-  id         String  @id(map: "sys_project_statuses_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name       String
-  color_code String
-  icon       String
-  sort_order Int     @default(0)
-  is_default Boolean @default(false)
-}
-
-model sys_task_status_categories {
-  id                String              @id(map: "sys_task_status_categories_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name              String
-  color_code        String
-  index             Int                 @default(0)
-  is_todo           Boolean             @default(false)
-  is_doing          Boolean             @default(false)
-  is_done           Boolean             @default(false)
-  description       String?
-  color_code_dark   String?
-  cpt_task_statuses cpt_task_statuses[]
-  pt_statuses       pt_statuses[]
-  pt_task_statuses  pt_task_statuses[]
-  task_statuses     task_statuses[]
-
-  @@index([id, color_code, color_code_dark, is_done, is_doing, is_todo], map: "idx_sys_task_status_categories_covering")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model task_activity_logs {
-  id             String   @id(map: "task_activity_logs_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  task_id        String   @db.Uuid
-  team_id        String   @db.Uuid
-  attribute_type String
-  user_id        String   @db.Uuid
-  log_type       String?
-  old_value      String?
-  new_value      String?
-  prev_string    String?
-  next_string    String?
-  created_at     DateTime @default(now()) @db.Timestamptz(6)
-  project_id     String   @db.Uuid
-  projects       projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_activity_logs_projects_id_fk")
-  tasks          tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_activity_logs_tasks_id_fk")
-  teams          teams    @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_activity_logs_team_id_fk")
-  users          users    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_activity_logs_users_id_fk")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model task_attachments {
-  id          String   @id(map: "task_attachments_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name        String
-  size        BigInt   @default(0)
-  type        String
-  task_id     String?  @db.Uuid
-  team_id     String   @db.Uuid
-  project_id  String   @db.Uuid
-  uploaded_by String   @db.Uuid
-  created_at  DateTime @default(now()) @db.Timestamptz(6)
-  projects    projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_attachments_project_id_fk")
-  tasks       tasks?   @relation(fields: [task_id], references: [id], onUpdate: NoAction, map: "task_attachments_task_id_fk")
-  teams       teams    @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_attachments_team_id_fk")
-  users       users    @relation(fields: [uploaded_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_attachments_uploaded_by_fk")
-
-  @@index([task_id], map: "idx_task_attachments_task")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model task_comment_attachments {
-  id            String        @id(map: "task_comment_attachments_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name          String
-  size          BigInt        @default(0)
-  type          String
-  task_id       String        @db.Uuid
-  comment_id    String        @db.Uuid
-  team_id       String        @db.Uuid
-  project_id    String        @db.Uuid
-  created_at    DateTime      @default(now()) @db.Timestamptz(6)
-  task_comments task_comments @relation(fields: [comment_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_attachments_comment_id_fk")
-  projects      projects      @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_attachments_project_id_fk")
-  tasks         tasks         @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_attachments_task_id_fk")
-  teams         teams         @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_attachments_team_id_fk")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model task_comment_contents {
-  index          Int
-  comment_id     String        @db.Uuid
-  team_member_id String?       @db.Uuid
-  text_content   String?
-  task_comments  task_comments @relation(fields: [comment_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_contents_comment_id_fk")
-  team_members   team_members? @relation(fields: [team_member_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_comment_contents_team_member_fk")
-
-  @@ignore
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model task_comment_mentions {
-  comment_id      String        @db.Uuid
-  mentioned_index Int           @default(0)
-  mentioned_by    String        @db.Uuid
-  informed_by     String        @db.Uuid
-  created_at      DateTime      @default(now()) @db.Timestamptz(6)
-  task_comments   task_comments @relation(fields: [comment_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_mentions_comment_id_fk")
-  team_members    team_members  @relation(fields: [informed_by], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_mentions_informed_by_fk")
-  users           users         @relation(fields: [mentioned_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_comment_mentions_mentioned_by_fk")
-
-  @@ignore
-}
-
-model task_comment_reactions {
-  id             String         @id(map: "task_comment_reactions_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  comment_id     String         @db.Uuid
-  user_id        String         @db.Uuid
-  team_member_id String         @db.Uuid
-  reaction_type  reaction_types @default(like)
-  created_at     DateTime?      @default(now()) @db.Timestamptz(6)
-  task_comments  task_comments  @relation(fields: [comment_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_reactions_comment_id_fk")
-  team_members   team_members   @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comment_reactions_team_member_id_fk")
-  users          users          @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_comment_reactions_user_id_fk")
-}
-
-model task_comments {
-  id                       String                     @id(map: "task_comments_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id                  String                     @db.Uuid
-  team_member_id           String                     @db.Uuid
-  task_id                  String                     @db.Uuid
-  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
-  updated_at               DateTime                   @default(now()) @db.Timestamptz(6)
-  ses_message_id           String?
-  task_comment_attachments task_comment_attachments[]
-  task_comment_contents    task_comment_contents[]    @ignore
-  task_comment_mentions    task_comment_mentions[]    @ignore
-  task_comment_reactions   task_comment_reactions[]
-  tasks                    tasks                      @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comments_task_id_fk")
-  team_members             team_members               @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comments_team_member_id_fk")
-  users                    users                      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_comments_user_id_fk")
-
-  @@index([task_id], map: "idx_task_comments_task")
-}
-
-model task_dependencies {
-  id                                             String          @id(map: "task_dependencies_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  task_id                                        String          @db.Uuid
-  related_task_id                                String          @db.Uuid
-  dependency_type                                dependency_type @default(blocked_by)
-  created_at                                     DateTime?       @default(now()) @db.Timestamptz(6)
-  tasks_task_dependencies_task_idTotasks         tasks           @relation("task_dependencies_task_idTotasks", fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_dependencies_tasks_id_fk")
-  tasks_task_dependencies_related_task_idTotasks tasks           @relation("task_dependencies_related_task_idTotasks", fields: [related_task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_dependencies_tasks_id_fk_2")
-
-  @@unique([task_id, related_task_id, dependency_type], map: "task_dependencies_unique_key")
-  @@index([task_id], map: "idx_task_dependencies_task")
-}
-
-model task_labels {
-  task_id     String      @db.Uuid
-  label_id    String      @db.Uuid
-  team_labels team_labels @relation(fields: [label_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_labels_label_id_fk")
-  tasks       tasks       @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_labels_task_id_fk")
-
-  @@id([task_id, label_id], map: "task_labels_pk")
-  @@index([task_id, label_id], map: "idx_task_labels_task_label")
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model task_phase {
-  task_id        String         @db.Uuid
-  phase_id       String         @db.Uuid
-  project_phases project_phases @relation(fields: [phase_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_phase_phase_id_fk")
-  tasks          tasks          @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_phase_task_id_fk")
-
-  @@index([task_id, phase_id], map: "idx_task_phase_task_phase")
-  @@ignore
-}
-
-model task_priorities {
-  id                       String                     @id(map: "task_priorities_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                     String
-  value                    Int                        @default(0)
-  color_code               String
-  color_code_dark          String?
-  cpt_tasks                cpt_tasks[]
-  pt_tasks                 pt_tasks[]
-  task_recurring_templates task_recurring_templates[] @ignore
-  tasks                    tasks[]
-
-  @@index([value], map: "idx_task_priorities_value")
-}
-
-model task_recurring_schedules {
-  id                       String                     @id(map: "task_recurring_schedules_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  schedule_type            schedule_type?             @default(daily)
-  days_of_week             Int[]
-  day_of_month             Int?
-  week_of_month            Int?
-  interval_days            Int?
-  interval_weeks           Int?
-  interval_months          Int?
-  start_date               DateTime?                  @db.Date
-  end_date                 DateTime?                  @db.Date
-  created_at               DateTime?                  @default(now()) @db.Timestamptz(6)
-  task_recurring_templates task_recurring_templates[] @ignore
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model task_recurring_templates {
-  id                       String                   @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  task_id                  String                   @db.Uuid
-  schedule_id              String                   @db.Uuid
-  name                     String
-  description              String?
-  end_date                 DateTime?                @db.Timestamptz(6)
-  priority_id              String                   @db.Uuid
-  project_id               String                   @db.Uuid
-  assignees                Json?
-  labels                   Json?
-  created_at               DateTime?                @default(now()) @db.Timestamptz(6)
-  projects                 projects                 @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_recurring_templates_projects_id_fk")
-  task_priorities          task_priorities          @relation(fields: [priority_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_recurring_templates_task_priorities_id_fk")
-  task_recurring_schedules task_recurring_schedules @relation(fields: [schedule_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_recurring_templates_task_recurring_schedules_id_fk")
-  tasks                    tasks                    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_recurring_templates_tasks_id_fk")
-
-  @@ignore
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model task_statuses {
-  id                         String                     @id(map: "task_statuses_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                       String
-  project_id                 String                     @db.Uuid
-  team_id                    String                     @db.Uuid
-  category_id                String                     @db.Uuid
-  sort_order                 Int                        @default(0)
-  sys_task_status_categories sys_task_status_categories @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_statuses_category_id_fk")
-  projects                   projects                   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_statuses_project_id_fk")
-  teams                      teams                      @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_statuses_team_id_fk")
-  tasks                      tasks[]
-
-  @@index([category_id, project_id], map: "idx_task_statuses_category")
-  @@index([id, category_id, project_id], map: "idx_task_statuses_covering")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model task_subscribers {
-  id             String       @id(map: "task_subscribers_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id        String       @db.Uuid
-  task_id        String       @db.Uuid
-  team_member_id String       @db.Uuid
-  action         String
-  created_at     DateTime     @default(now()) @db.Timestamptz(6)
-  tasks          tasks        @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_subscribers_task_id_fk")
-  team_members   team_members @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_subscribers_team_member_id_fk")
-  users          users        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_subscribers_user_id_fk")
-
-  @@index([task_id], map: "idx_task_subscribers_task")
-}
-
-model task_templates {
-  id                   String                 @id(map: "task_templates_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                 String
-  team_id              String                 @db.Uuid
-  created_at           DateTime               @default(now()) @db.Timestamptz(6)
-  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
-  teams                teams                  @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_templates_teams_id_fk")
-  task_templates_tasks task_templates_tasks[] @ignore
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model task_templates_tasks {
-  name           String
-  template_id    String         @db.Uuid
-  total_minutes  Decimal        @default(0) @db.Decimal
-  task_templates task_templates @relation(fields: [template_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_templates_tasks_template_id_fk")
-
-  @@ignore
-}
-
-model task_timers {
-  task_id    String    @db.Uuid
-  user_id    String    @db.Uuid
-  start_time DateTime? @db.Timestamptz(6)
-  tasks      tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_timers_task_id_fk")
-  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_timers_user_id_fk")
-
-  @@id([task_id, user_id], map: "task_timers_pk")
-  @@index([task_id, user_id], map: "idx_task_timers_task_user")
-  @@index([user_id, task_id], map: "idx_task_timers_user_task")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model task_updates {
-  id                                    String   @id(map: "task_updates_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  type                                  String
-  reporter_id                           String   @db.Uuid
-  task_id                               String   @db.Uuid
-  user_id                               String   @db.Uuid
-  team_id                               String   @db.Uuid
-  project_id                            String   @db.Uuid
-  is_sent                               Boolean  @default(false)
-  created_at                            DateTime @default(now()) @db.Timestamptz(6)
-  retry_count                           Int?     @default(0)
-  projects                              projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_project_id_fk")
-  users_task_updates_reporter_idTousers users    @relation("task_updates_reporter_idTousers", fields: [reporter_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_reporter_id_fk")
-  tasks                                 tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_task_id_fk")
-  teams                                 teams    @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_team_id_fk")
-  users_task_updates_user_idTousers     users    @relation("task_updates_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_updates_user_id_fk")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model task_work_log {
-  id              String   @id(map: "task_work_log_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  time_spent      Decimal  @default(0) @db.Decimal
-  description     String?
-  logged_by_timer Boolean  @default(false)
-  task_id         String   @db.Uuid
-  user_id         String   @db.Uuid
-  created_at      DateTime @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime @default(now()) @db.Timestamptz(6)
-  tasks           tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_work_log_task_id_fk")
-  users           users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_work_log_users_id_fk")
-
-  @@index([task_id], map: "idx_task_work_log_task")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
-model tasks {
-  id                                                         String                     @id(map: "tasks_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                                                       String
-  description                                                String?
-  done                                                       Boolean                    @default(false)
-  total_minutes                                              Decimal                    @default(0) @db.Decimal
-  archived                                                   Boolean                    @default(false)
-  task_no                                                    BigInt
-  start_date                                                 DateTime?                  @db.Timestamptz(6)
-  end_date                                                   DateTime?                  @db.Timestamptz(6)
-  priority_id                                                String                     @db.Uuid
-  project_id                                                 String                     @db.Uuid
-  reporter_id                                                String                     @db.Uuid
-  parent_task_id                                             String?                    @db.Uuid
-  status_id                                                  String                     @db.Uuid
-  completed_at                                               DateTime?                  @db.Timestamptz(6)
-  created_at                                                 DateTime                   @default(now()) @db.Timestamptz(6)
-  updated_at                                                 DateTime                   @default(now()) @db.Timestamptz(6)
-  sort_order                                                 Int                        @default(0)
-  roadmap_sort_order                                         Int                        @default(0)
-  status_sort_order                                          Int                        @default(0)
-  priority_sort_order                                        Int                        @default(0)
-  phase_sort_order                                           Int                        @default(0)
-  billable                                                   Boolean?                   @default(true)
-  schedule_id                                                String?                    @db.Uuid
-  manual_progress                                            Boolean                    @default(false)
-  progress_value                                             Int?
-  progress_mode                                              progress_mode_type         @default(default)
-  weight                                                     Int?
-  cc_column_values                                           cc_column_values[]
-  task_activity_logs                                         task_activity_logs[]
-  task_attachments                                           task_attachments[]
-  task_comment_attachments                                   task_comment_attachments[]
-  task_comments                                              task_comments[]
-  task_dependencies_task_dependencies_task_idTotasks         task_dependencies[]        @relation("task_dependencies_task_idTotasks")
-  task_dependencies_task_dependencies_related_task_idTotasks task_dependencies[]        @relation("task_dependencies_related_task_idTotasks")
-  task_labels                                                task_labels[]
-  task_phase                                                 task_phase[]               @ignore
-  task_recurring_templates                                   task_recurring_templates[] @ignore
-  task_subscribers                                           task_subscribers[]
-  task_timers                                                task_timers[]
-  task_updates                                               task_updates[]
-  task_work_log                                              task_work_log[]
-  tasks                                                      tasks?                     @relation("tasksTotasks", fields: [parent_task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "tasks_parent_task_id_fk")
-  other_tasks                                                tasks[]                    @relation("tasksTotasks")
-  task_priorities                                            task_priorities            @relation(fields: [priority_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tasks_priority_fk")
-  projects                                                   projects                   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "tasks_project_fk")
-  users                                                      users                      @relation(fields: [reporter_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tasks_reporter_id_fk")
-  task_statuses                                              task_statuses              @relation(fields: [status_id], references: [id], onUpdate: NoAction, map: "tasks_status_id_fk")
-  tasks_assignees                                            tasks_assignees[]
-  user_notifications                                         user_notifications[]
-
-  @@unique([project_id, sort_order], map: "tasks_sort_order_unique")
-  @@index([project_id, phase_sort_order], map: "idx_tasks_phase_sort_order")
-  @@index([project_id, priority_sort_order], map: "idx_tasks_priority_sort_order")
-  @@index([project_id, status_sort_order], map: "idx_tasks_status_sort_order")
-}
-
-model tasks_assignees {
-  task_id           String          @db.Uuid
-  project_member_id String          @db.Uuid
-  team_member_id    String          @db.Uuid
-  created_at        DateTime        @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime        @default(now()) @db.Timestamptz(6)
-  assigned_by       String          @db.Uuid
-  users             users           @relation(fields: [assigned_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tasks_assignees_assigned_by_fk")
-  project_members   project_members @relation(fields: [project_member_id], references: [id], onDelete: Cascade, map: "tasks_assignees_project_member_id_fk")
-  tasks             tasks           @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "tasks_assignees_task_id_fk")
-  team_members      team_members    @relation(fields: [team_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "tasks_assignees_team_member_fk")
-
-  @@id([task_id, project_member_id], map: "tasks_assignees_pk")
-  @@index([task_id, team_member_id], map: "idx_tasks_assignees_task_member")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model team_labels {
-  id              String            @id(map: "team_labels_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name            String
-  color_code      String
-  team_id         String            @db.Uuid
-  cpt_task_labels cpt_task_labels[]
-  task_labels     task_labels[]
-  teams           teams             @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "team_labels_team_id_fk")
-
-  @@index([team_id], map: "idx_team_labels_team")
-}
-
-model team_members {
-  id                         String                       @id(map: "team_members_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id                    String?                      @db.Uuid
-  team_id                    String                       @db.Uuid
-  role_id                    String                       @db.Uuid
-  job_title_id               String?                      @db.Uuid
-  created_at                 DateTime                     @default(now()) @db.Timestamptz(6)
-  updated_at                 DateTime                     @default(now()) @db.Timestamptz(6)
-  active                     Boolean?                     @default(true)
-  email_invitations          email_invitations[]
-  project_member_allocations project_member_allocations[]
-  project_members            project_members[]
-  project_subscribers        project_subscribers[]
-  task_comment_contents      task_comment_contents[]      @ignore
-  task_comment_mentions      task_comment_mentions[]      @ignore
-  task_comment_reactions     task_comment_reactions[]
-  task_comments              task_comments[]
-  task_subscribers           task_subscribers[]
-  tasks_assignees            tasks_assignees[]
-  job_titles                 job_titles?                  @relation(fields: [job_title_id], references: [id], onUpdate: NoAction, map: "team_members_job_title_id_fk")
-  roles                      roles                        @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_members_role_id_fk")
-  teams                      teams                        @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "team_members_team_id_fk")
-  users                      users?                       @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_members_user_id_fk")
-}
-
-model timezones {
-  id         String                  @id(map: "timezones_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name       String
-  abbrev     String
-  utc_offset Unsupported("interval")
-  users      users[]
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model user_deletion_logs {
-  id                      String    @id(map: "user_deletion_logs_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id                 String    @db.Uuid
-  email                   String
-  name                    String
-  requested_at            DateTime  @default(now()) @db.Timestamptz(6)
-  scheduled_deletion_date DateTime  @db.Timestamptz(6)
-  deleted_at              DateTime? @db.Timestamptz(6)
-  deletion_completed      Boolean   @default(false)
-  created_at              DateTime  @default(now()) @db.Timestamptz(6)
-  users                   users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_deletion_logs_user_id_fk")
-
-  @@index([user_id], map: "idx_user_deletion_logs_user_id")
-}
-
-model user_notifications {
-  id         String    @id(map: "user_notifications_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  message    String
-  user_id    String    @db.Uuid
-  team_id    String    @db.Uuid
-  read       Boolean   @default(false)
-  created_at DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at DateTime  @default(now()) @db.Timestamptz(6)
-  task_id    String?   @db.Uuid
-  project_id String?   @db.Uuid
-  projects   projects? @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_notifications_project_id_fk")
-  tasks      tasks?    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_notifications_task_id_fk")
-  teams      teams     @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_notifications_team_id_fk")
-  users      users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_notifications_user_id_fk")
-}
-
-model users_data {
-  user_id                  String    @unique @db.Uuid
-  organization_name        String
-  contact_number           String?
-  contact_number_secondary String?
-  address_line_1           String?
-  address_line_2           String?
-  country                  String?   @db.Uuid
-  city                     String?
-  state                    String?
-  postal_code              String?
-  trial_in_progress        Boolean   @default(false)
-  trial_expire_date        DateTime? @db.Date
-  subscription_status      String    @default("active")
-  storage                  Int       @default(1)
-  updating_plan            Boolean?  @default(false)
-  users                    users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_data_user_id_fk")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model worklenz_alerts {
-  description String
-  type        String
-  active      Boolean? @default(false)
-
-  @@ignore
-}
+// ============================================================================
+// ENUMS
+// ============================================================================
 
 enum rcm_resource_type {
   personnel
@@ -1955,57 +54,321 @@ enum inv_barcode_type {
   UPC_A
 }
 
-enum dependency_type {
-  blocked_by
+// ============================================================================
+// RCM CORE TABLES
+// ============================================================================
+
+model rcm_resources {
+  id               String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resource_type    rcm_resource_type
+
+  // Personnel-specific fields
+  first_name       String?            @db.VarChar(100)
+  last_name        String?            @db.VarChar(100)
+  email            String?            @db.VarChar(255)
+  phone            String?            @db.VarChar(50)
+  employee_id      String?            @db.VarChar(50)
+
+  // Equipment-specific fields
+  equipment_name   String?            @db.VarChar(200)
+  model            String?            @db.VarChar(100)
+  serial_number    String?            @db.VarChar(100)
+
+  // Common fields
+  team_id          String             @db.Uuid
+  created_by       String             @db.Uuid
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active        Boolean            @default(true)
+  notes            String?            @db.Text
+
+  // Relations
+  resource_skills               rcm_resource_skills[]
+  department_assignments        rcm_resource_department_assignments[]
+  availability                  rcm_availability[]
+  unavailability_periods        rcm_unavailability_periods[]
+  allocations                   rcm_allocations[]
+
+  @@index([team_id])
+  @@index([resource_type])
+  @@index([is_active])
+  @@index([email])
 }
 
-enum language_type {
-  en
-  es
-  pt
-  alb
-  de
-  zh_cn
-  ko
+model rcm_departments {
+  id             String                              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name           String                              @db.VarChar(200)
+  description    String?                             @db.Text
+  parent_dept_id String?                             @db.Uuid
+  team_id        String                              @db.Uuid
+  created_by     String                              @db.Uuid
+  created_at     DateTime                            @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime                            @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active      Boolean                             @default(true)
+
+  // Relations
+  resource_assignments rcm_resource_department_assignments[]
+  parent_department    rcm_departments?                    @relation("DepartmentHierarchy", fields: [parent_dept_id], references: [id], onDelete: Cascade)
+  child_departments    rcm_departments[]                   @relation("DepartmentHierarchy")
+
+  @@index([team_id])
+  @@index([parent_dept_id])
+  @@index([is_active])
 }
 
-enum progress_mode_type {
-  manual
-  weighted
-  time
-  default
+model rcm_resource_department_assignments {
+  id            String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resource_id   String           @db.Uuid
+  department_id String           @db.Uuid
+  is_primary    Boolean          @default(false)
+  assigned_at   DateTime         @default(now()) @db.Timestamptz(6)
+  assigned_by   String           @db.Uuid
+
+  // Relations
+  resource   rcm_resources   @relation(fields: [resource_id], references: [id], onDelete: Cascade)
+  department rcm_departments @relation(fields: [department_id], references: [id], onDelete: Cascade)
+
+  @@unique([resource_id, department_id])
+  @@index([resource_id])
+  @@index([department_id])
 }
 
-enum reaction_types {
-  like
+model rcm_skills {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  category    String?  @db.VarChar(100)
+  team_id     String   @db.Uuid
+  created_by  String   @db.Uuid
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active   Boolean  @default(true)
+
+  // Relations
+  resource_skills rcm_resource_skills[]
+
+  @@index([team_id])
+  @@index([category])
+  @@index([is_active])
 }
 
-enum schedule_type {
-  daily
-  weekly
-  yearly
-  monthly
-  every_x_days
-  every_x_weeks
-  every_x_months
+model rcm_resource_skills {
+  id              String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resource_id     String                 @db.Uuid
+  skill_id        String                 @db.Uuid
+  proficiency     rcm_proficiency_level
+  years_experience Int?
+  assigned_at     DateTime               @default(now()) @db.Timestamptz(6)
+  assigned_by     String                 @db.Uuid
+
+  // Relations
+  resource rcm_resources @relation(fields: [resource_id], references: [id], onDelete: Cascade)
+  skill    rcm_skills    @relation(fields: [skill_id], references: [id], onDelete: Cascade)
+
+  @@unique([resource_id, skill_id])
+  @@index([resource_id])
+  @@index([skill_id])
+  @@index([proficiency])
 }
 
-enum wl_task_list_col_key {
-  ASSIGNEES
-  COMPLETED_DATE
-  CREATED_DATE
-  DESCRIPTION
-  DUE_DATE
-  ESTIMATION
-  KEY
-  LABELS
-  LAST_UPDATED
-  NAME
-  PRIORITY
-  PROGRESS
-  START_DATE
-  STATUS
-  TIME_TRACKING
-  REPORTER
-  PHASE
+model rcm_availability {
+  id                    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resource_id           String   @db.Uuid
+  effective_from        DateTime @db.Date
+  effective_to          DateTime? @db.Date
+  hours_per_day         Decimal  @db.Decimal(5, 2)
+  days_per_week         Decimal  @db.Decimal(3, 1)
+  total_hours_per_week  Decimal  @db.Decimal(5, 2)
+  created_by            String   @db.Uuid
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  resource rcm_resources @relation(fields: [resource_id], references: [id], onDelete: Cascade)
+
+  @@index([resource_id])
+  @@index([effective_from])
+  @@index([effective_to])
+}
+
+model rcm_unavailability_periods {
+  id                String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resource_id       String                   @db.Uuid
+  unavailability_type rcm_unavailability_type
+  start_date        DateTime                 @db.Date
+  end_date          DateTime                 @db.Date
+  description       String?                  @db.Text
+  created_by        String                   @db.Uuid
+  created_at        DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime                 @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  resource rcm_resources @relation(fields: [resource_id], references: [id], onDelete: Cascade)
+
+  @@index([resource_id])
+  @@index([start_date])
+  @@index([end_date])
+  @@index([unavailability_type])
+}
+
+model rcm_allocations {
+  id                String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resource_id       String   @db.Uuid
+  project_id        String   @db.Uuid
+  start_date        DateTime @db.Date
+  end_date          DateTime @db.Date
+  allocation_percent Decimal  @db.Decimal(7, 2)
+  notes             String?  @db.Text
+  created_by        String   @db.Uuid
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active         Boolean  @default(true)
+
+  // Relations
+  resource rcm_resources @relation(fields: [resource_id], references: [id], onDelete: Cascade)
+
+  @@index([resource_id])
+  @@index([project_id])
+  @@index([start_date])
+  @@index([end_date])
+  @@index([is_active])
+}
+
+// ============================================================================
+// INVENTORY MANAGEMENT TABLES
+// ============================================================================
+
+model inv_suppliers {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name        String   @db.VarChar(200)
+  contact_person String? @db.VarChar(100)
+  email       String?  @db.VarChar(255)
+  phone       String?  @db.VarChar(50)
+  address     String?  @db.Text
+  notes       String?  @db.Text
+  team_id     String   @db.Uuid
+  created_by  String   @db.Uuid
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active   Boolean  @default(true)
+
+  // Relations
+  components inv_components[]
+
+  @@index([team_id])
+  @@index([is_active])
+  @@index([name])
+}
+
+model inv_storage_locations {
+  id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  location_code    String   @db.VarChar(50)
+  name             String   @db.VarChar(200)
+  description      String?  @db.Text
+  parent_location_id String? @db.Uuid
+  team_id          String   @db.Uuid
+  created_by       String   @db.Uuid
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active        Boolean  @default(true)
+
+  // Relations
+  parent_location   inv_storage_locations?  @relation("LocationHierarchy", fields: [parent_location_id], references: [id], onDelete: Cascade)
+  child_locations   inv_storage_locations[] @relation("LocationHierarchy")
+  components        inv_components[]
+
+  @@index([team_id])
+  @@index([parent_location_id])
+  @@index([is_active])
+  @@index([location_code])
+}
+
+model inv_components {
+  id                  String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                String         @db.VarChar(200)
+  sku                 String?        @db.VarChar(100)
+  description         String?        @db.Text
+  category            String?        @db.VarChar(100)
+
+  // Polymorphic ownership
+  owner_type          inv_owner_type
+  supplier_id         String?        @db.Uuid
+  storage_location_id String?        @db.Uuid
+
+  // Inventory tracking
+  quantity            Int            @default(0)
+  unit                String?        @db.VarChar(50)
+  unit_cost           Decimal?       @db.Decimal(10, 2)
+  reorder_level       Int?           @default(0)
+
+  // QR Code data
+  qr_code_data        String?        @db.Text
+  qr_code_image       String?        @db.Text
+
+  team_id             String         @db.Uuid
+  created_by          String         @db.Uuid
+  created_at          DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime       @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active           Boolean        @default(true)
+
+  // Relations
+  supplier         inv_suppliers?         @relation(fields: [supplier_id], references: [id], onDelete: SetNull)
+  storage_location inv_storage_locations? @relation(fields: [storage_location_id], references: [id], onDelete: SetNull)
+  transactions     inv_transactions[]
+  barcode_mappings inv_barcode_mappings[]
+
+  @@index([team_id])
+  @@index([supplier_id])
+  @@index([storage_location_id])
+  @@index([is_active])
+  @@index([sku])
+  @@index([category])
+  @@index([owner_type])
+}
+
+model inv_transactions {
+  id               String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  component_id     String               @db.Uuid
+  transaction_type inv_transaction_type
+  quantity         Int
+  quantity_before  Int
+  quantity_after   Int
+  unit_cost        Decimal?             @db.Decimal(10, 2)
+  reference_number String?              @db.VarChar(100)
+  notes            String?              @db.Text
+  transaction_date DateTime             @default(now()) @db.Timestamptz(6)
+  team_id          String               @db.Uuid
+  created_by       String               @db.Uuid
+  created_at       DateTime             @default(now()) @db.Timestamptz(6)
+  is_active        Boolean              @default(true)
+
+  // Relations
+  component inv_components @relation(fields: [component_id], references: [id], onDelete: Cascade)
+
+  @@index([team_id])
+  @@index([component_id])
+  @@index([transaction_type])
+  @@index([transaction_date])
+  @@index([is_active])
+}
+
+model inv_barcode_mappings {
+  id           String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  component_id String          @db.Uuid
+  barcode_type inv_barcode_type
+  barcode_data String          @db.Text
+  team_id      String          @db.Uuid
+  created_by   String          @db.Uuid
+  created_at   DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime        @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active    Boolean         @default(true)
+
+  // Relations
+  component inv_components @relation(fields: [component_id], references: [id], onDelete: Cascade)
+
+  @@unique([component_id, barcode_type])
+  @@index([team_id])
+  @@index([component_id])
+  @@index([barcode_type])
+  @@index([is_active])
 }
