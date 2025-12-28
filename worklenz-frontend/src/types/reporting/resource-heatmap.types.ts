@@ -11,14 +11,30 @@ export interface IHeatmapFilters {
   resource_types?: ('personnel' | 'equipment')[];
   project_id?: string;
   include_unavailability?: boolean;
+  include_tasks?: boolean;
   page?: number;
   size?: number;
+}
+
+export interface ITaskDetail {
+  task_id: string;
+  task_name: string;
+  status_name: string;
+  status_color: string;
+  priority_name: string;
+  priority_color: string;
+  start_date?: string;
+  end_date?: string;
+  estimated_hours?: number;
+  logged_hours?: number;
 }
 
 export interface IAllocationDetail {
   project_id: string;
   project_name: string;
+  project_color?: string;
   allocation_percent: number;
+  tasks?: ITaskDetail[];
 }
 
 export interface IUnavailabilityDetail {

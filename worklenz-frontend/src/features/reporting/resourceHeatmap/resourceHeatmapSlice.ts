@@ -76,6 +76,7 @@ export const fetchHeatmapData = createAsyncThunk(
       end_date: reportingState.dateRange[1],
       granularity: heatmapState.granularity,
       include_unavailability: heatmapState.includeUnavailability,
+      include_tasks: true,
       page: heatmapState.page,
       size: heatmapState.pageSize,
     };

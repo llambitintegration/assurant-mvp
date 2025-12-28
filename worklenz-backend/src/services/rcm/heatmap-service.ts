@@ -11,7 +11,8 @@ import {
   IUtilizationPeriod,
   ITimePeriod,
   IAllocationDetail,
-  IUnavailabilityDetail
+  IUnavailabilityDetail,
+  ITaskDetail
 } from "../../interfaces/rcm/heatmap.interface";
 
 /**
@@ -107,13 +108,21 @@ export async function getHeatmapData(
           : Promise.resolve([])
       ]);
 
+      // Get tasks if requested and resource has email (personnel only)
+      let tasksByProject: Map<string, ITaskDetail[]> | undefined;
+      if (filters.include_tasks && resource.email && allocations.length > 0) {
+        const projectIds = [...new Set(allocations.map(a => a.project_id))];
+        tasksByProject = await getResourceTasks(resource.email, projectIds, startDate, endDate);
+      }
+
       // Calculate utilization for each time period
       const utilizationPeriods = timePeriods.map(period => {
         return calculateUtilizationForPeriod(
           period,
           allocations,
           availabilityRecords,
-          unavailabilityPeriods
+          unavailabilityPeriods,
+          tasksByProject
         );
       });
 
@@ -240,19 +249,101 @@ export async function getResourceAllocations(
     where
   });
 
-  // Fetch project names separately (projects table is ignored in Prisma)
+  // Fetch project names and colors separately (projects table is ignored in Prisma)
   const projectIds = [...new Set(allocations.map(a => a.project_id))];
-  const projects = await prisma.$queryRaw<Array<{id: string; name: string}>>`
-    SELECT id, name FROM projects WHERE id = ANY(${projectIds}::uuid[])
+  const projects = await prisma.$queryRaw<Array<{id: string; name: string; color_code: string}>>`
+    SELECT id, name, color_code FROM projects WHERE id = ANY(${projectIds}::uuid[])
   `;
 
-  const projectMap = new Map(projects.map(p => [p.id, p.name]));
+  const projectMap = new Map(projects.map(p => [p.id, { name: p.name, color: p.color_code }]));
 
-  // Attach project names to allocations
-  return allocations.map(alloc => ({
-    ...alloc,
-    project_name: projectMap.get(alloc.project_id) || `Project ${alloc.project_id.slice(0, 8)}`
-  }));
+  // Attach project names and colors to allocations
+  return allocations.map(alloc => {
+    const project = projectMap.get(alloc.project_id);
+    return {
+      ...alloc,
+      project_name: project?.name || `Project ${alloc.project_id.slice(0, 8)}`,
+      project_color: project?.color || '#1890ff'
+    };
+  });
+}
+
+/**
+ * Get tasks assigned to a resource for specific projects within a date range
+ */
+export async function getResourceTasks(
+  resourceEmail: string,
+  projectIds: string[],
+  startDate: Date,
+  endDate: Date
+): Promise<Map<string, ITaskDetail[]>> {
+  if (!resourceEmail || projectIds.length === 0) {
+    return new Map();
+  }
+
+  // Query tasks assigned to the resource via email -> user -> team_member -> tasks_assignees
+  const tasks = await prisma.$queryRaw<Array<{
+    task_id: string;
+    task_name: string;
+    project_id: string;
+    status_name: string;
+    status_color: string;
+    priority_name: string;
+    priority_color: string;
+    start_date: Date | null;
+    end_date: Date | null;
+    total_minutes: number;
+  }>>`
+    SELECT 
+      t.id as task_id,
+      t.name as task_name,
+      t.project_id,
+      COALESCE(ts.name, 'Unknown') as status_name,
+      COALESCE(ts.color_code, '#808080') as status_color,
+      COALESCE(tp.name, 'None') as priority_name,
+      COALESCE(tp.color_code, '#808080') as priority_color,
+      t.start_date,
+      t.end_date,
+      COALESCE(t.total_minutes, 0) as total_minutes
+    FROM tasks t
+    INNER JOIN tasks_assignees ta ON t.id = ta.task_id
+    INNER JOIN team_members tm ON ta.team_member_id = tm.id
+    INNER JOIN users u ON tm.user_id = u.id
+    LEFT JOIN task_statuses ts ON t.status_id = ts.id
+    LEFT JOIN task_priorities tp ON t.priority_id = tp.id
+    WHERE u.email = ${resourceEmail}
+      AND t.project_id = ANY(${projectIds}::uuid[])
+      AND (
+        (t.start_date IS NULL AND t.end_date IS NULL)
+        OR (t.start_date < ${endDate} AND (t.end_date IS NULL OR t.end_date > ${startDate}))
+        OR (t.start_date IS NULL AND t.end_date > ${startDate})
+      )
+    ORDER BY t.start_date ASC NULLS LAST, t.name ASC
+  `;
+
+  // Group tasks by project
+  const tasksByProject = new Map<string, ITaskDetail[]>();
+  
+  for (const task of tasks) {
+    const taskDetail: ITaskDetail = {
+      task_id: task.task_id,
+      task_name: task.task_name,
+      status_name: task.status_name,
+      status_color: task.status_color,
+      priority_name: task.priority_name,
+      priority_color: task.priority_color,
+      start_date: task.start_date?.toISOString(),
+      end_date: task.end_date?.toISOString(),
+      estimated_hours: undefined,
+      logged_hours: task.total_minutes > 0 ? task.total_minutes / 60 : undefined
+    };
+
+    const projectTasks = tasksByProject.get(task.project_id) || [];
+    projectTasks.push(taskDetail);
+    tasksByProject.set(task.project_id, projectTasks);
+  }
+
+  return tasksByProject;
 }
 
 /**
@@ -303,7 +394,8 @@ export function calculateUtilizationForPeriod(
   period: ITimePeriod,
   allocations: any[],
   availabilityRecords: any[],
-  unavailabilityPeriods: any[]
+  unavailabilityPeriods: any[],
+  tasksByProject?: Map<string, ITaskDetail[]>
 ): IUtilizationPeriod {
   // Filter allocations that overlap with this period
   const periodAllocations = allocations.filter(alloc => {
@@ -315,11 +407,13 @@ export function calculateUtilizationForPeriod(
     return sum + Number(alloc.allocation_percent);
   }, 0);
 
-  // Get allocation details
+  // Get allocation details with tasks
   const allocationDetails: IAllocationDetail[] = periodAllocations.map(alloc => ({
     project_id: alloc.project_id,
     project_name: alloc.project_name || 'Unknown Project',
-    allocation_percent: Number(alloc.allocation_percent)
+    project_color: alloc.project_color,
+    allocation_percent: Number(alloc.allocation_percent),
+    tasks: tasksByProject?.get(alloc.project_id)
   }));
 
   // Calculate available hours for this period
