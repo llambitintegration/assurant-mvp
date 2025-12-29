@@ -60,3 +60,7 @@ The frontend uses Vite's proxy feature to route API requests to the backend:
   - Updated inventory-sider with theme-aware ConfigProvider and custom CSS class
   - Added custom-inventory-sider CSS styles to match reporting sidebar pattern
   - Fixed navigation paths to use correct /worklenz/inventory/ prefix
+- **Inventory Data Rendering Fix (Dec 2025)** - Fixed inventory data not displaying on frontend:
+  - Fixed Redux state key mismatch in inventory slices (componentsReducer/transactionsReducer → inventoryComponents/inventoryTransactions)
+  - Added proper type conversion in backend services for query parameters (strings → integers/booleans)
+  - Updated components-service.ts, suppliers-service.ts, and locations-service.ts to parse page, size, and is_active parameters correctly for Prisma

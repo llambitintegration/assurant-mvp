@@ -163,8 +163,8 @@ export async function listLocations(
   filters: ILocationFilters,
   teamId: string
 ): Promise<ILocationListResponse> {
-  const page = filters.page || 1;
-  const size = filters.size || 20;
+  const page = typeof filters.page === 'string' ? parseInt(filters.page, 10) : (filters.page || 1);
+  const size = typeof filters.size === 'string' ? parseInt(filters.size, 10) : (filters.size || 20);
   const skip = (page - 1) * size;
 
   // Build where clause
@@ -172,9 +172,10 @@ export async function listLocations(
     team_id: teamId
   };
 
-  // Filter by is_active (default to true)
+  // Filter by is_active (default to true) - handle string "true"/"false" from query params
   if (filters.is_active !== undefined) {
-    where.is_active = filters.is_active;
+    const isActiveValue = filters.is_active as unknown;
+    where.is_active = isActiveValue === 'true' || isActiveValue === true;
   } else {
     where.is_active = true;
   }

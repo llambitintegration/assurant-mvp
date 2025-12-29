@@ -84,8 +84,8 @@ export async function listSuppliers(
   filters: ISupplierFilters,
   teamId: string
 ): Promise<ISupplierListResponse> {
-  const page = filters.page || 1;
-  const size = filters.size || 20;
+  const page = typeof filters.page === 'string' ? parseInt(filters.page, 10) : (filters.page || 1);
+  const size = typeof filters.size === 'string' ? parseInt(filters.size, 10) : (filters.size || 20);
   const skip = (page - 1) * size;
 
   // Build where clause
