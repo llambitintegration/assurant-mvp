@@ -83,7 +83,7 @@ const initialState: ComponentsState = {
 export const fetchComponents = createAsyncThunk(
   'components/fetchComponents',
   async (_, { getState }) => {
-    const state = (getState() as any).componentsReducer as ComponentsState;
+    const state = (getState() as any).inventoryComponents as ComponentsState;
 
     const params: any = {
       page: state.page,

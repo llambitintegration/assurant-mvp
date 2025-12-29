@@ -63,7 +63,7 @@ const initialState: TransactionsState = {
 export const fetchTransactions = createAsyncThunk(
   'transactions/fetchTransactions',
   async (_, { getState }) => {
-    const state = (getState() as any).transactionsReducer as TransactionsState;
+    const state = (getState() as any).inventoryTransactions as TransactionsState;
 
     const params: Partial<ITransactionFilters> = {
       ...state.filters,
@@ -88,7 +88,7 @@ export const fetchTransactions = createAsyncThunk(
 export const fetchComponentHistory = createAsyncThunk(
   'transactions/fetchComponentHistory',
   async (componentId: string, { getState }) => {
-    const state = (getState() as any).transactionsReducer as TransactionsState;
+    const state = (getState() as any).inventoryTransactions as TransactionsState;
 
     const params: Partial<ITransactionFilters> = {
       page: state.page,
