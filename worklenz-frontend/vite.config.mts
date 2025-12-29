@@ -1,9 +1,20 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig(({ command, mode }) => {
   const isProduction = command === 'build';
+  
+  // Load env file based on mode
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  // Determine if running in Docker mode
+  const isDocker = env.VITE_USE_DOCKER === 'true' || env.USE_DOCKER === 'true';
+  
+  // Backend URL for proxy - defaults to localhost:3000, can be overridden for Docker
+  const backendUrl = env.VITE_BACKEND_URL || env.BACKEND_URL || 'http://localhost:3000';
+  
+  console.log(`[Vite] Mode: ${mode}, Docker: ${isDocker}, Backend: ${backendUrl}`);
 
   return {
     // **Plugins**
@@ -40,22 +51,29 @@ export default defineConfig(({ command, mode }) => {
         overlay: false,
       },
       allowedHosts: true,
+      // Proxy configuration for development and Replit
+      // In Docker production, the frontend is served statically and doesn't use proxy
       proxy: {
         '/secure': {
-          target: 'http://localhost:3000',
+          target: backendUrl,
           changeOrigin: true,
         },
         '/api': {
-          target: 'http://localhost:3000',
+          target: backendUrl,
           changeOrigin: true,
         },
         '/socket': {
-          target: 'http://localhost:3000',
+          target: backendUrl,
           changeOrigin: true,
           ws: true,
         },
         '/csrf-token': {
-          target: 'http://localhost:3000',
+          target: backendUrl,
+          changeOrigin: true,
+        },
+        // Add webhook proxying for development
+        '/webhook': {
+          target: backendUrl,
           changeOrigin: true,
         },
       },

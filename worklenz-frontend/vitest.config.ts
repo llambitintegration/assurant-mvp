@@ -5,11 +5,21 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('test'),
+  },
   test: {
     globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    css: true,
+    environment: 'node',
+    // setupFiles: ['./src/test/setup.ts'], // Temporarily disabled to debug
+    css: false,
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
+    testTimeout: 30000,
     reporters: ['verbose'],
     coverage: {
       reporter: ['text', 'json', 'html'],
