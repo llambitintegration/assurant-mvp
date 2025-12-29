@@ -42,7 +42,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "db:init": "node scripts/init-database.js",
-    "db:init:dry-run": "node scripts/init-database.js --dry-run"
+    "db:init:dry-run": "node scripts/init-database.js --dry-run",
+    "import:cycle-count": "ts-node src/utils/data-migration/importers/import-cycle-count-data.ts"
   },
   "jestSonar": {
     "reportPath": "coverage",
