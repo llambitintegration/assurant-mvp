@@ -1,0 +1,32 @@
+# ============================================================================
+# WORKLENZ FRONTEND - ENVIRONMENT CONFIGURATION
+# ============================================================================
+# Copy this to worklenz-frontend/.env.production for Docker builds
+# For Replit: Set these as Replit Secrets or leave empty for Vite proxy
+# ============================================================================
+
+# =============================================================================
+# DOCKER CONFIGURATION
+# =============================================================================
+# When running in Docker, the frontend needs to know the backend URL
+# These are injected at runtime via env-config.js
+
+# For Docker (accessed from browser, use localhost or external hostname):
+VITE_API_URL=http://localhost:3000
+VITE_SOCKET_URL=ws://localhost:3000
+
+# =============================================================================
+# REPLIT / LOCAL DEVELOPMENT
+# =============================================================================
+# Leave empty - Vite proxy handles routing to backend at localhost:3000
+# VITE_API_URL=
+# VITE_SOCKET_URL=
+
+# =============================================================================
+# PRODUCTION (external hosting)
+# =============================================================================
+# Set to your actual backend URL
+# VITE_API_URL=https://api.yourdomain.com
+# VITE_SOCKET_URL=wss://api.yourdomain.com
+
+
