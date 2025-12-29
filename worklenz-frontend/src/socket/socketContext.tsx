@@ -11,6 +11,16 @@ import { getUserSession } from '@/utils/session-helper';
 // Global socket instance to prevent multiple connections in StrictMode
 let globalSocketInstance: Socket | null = null;
 
+// HMR cleanup - disconnect old socket on module hot reload
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    if (globalSocketInstance) {
+      globalSocketInstance.disconnect();
+      globalSocketInstance = null;
+    }
+  });
+}
+
 interface SocketContextType {
   socket: Socket | null;
   connected: boolean;
@@ -50,14 +60,17 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Only create a new socket if one doesn't exist globally or locally
     if (!socketRef.current && !globalSocketInstance) {
       isInitialized.current = true;
-      globalSocketInstance = io(SOCKET_CONFIG.url, {
+      // When URL is undefined or empty, pass only options so Socket.io uses current origin
+      const socketUrl = SOCKET_CONFIG.url || undefined;
+      const socketOptions = {
         ...SOCKET_CONFIG.options,
         reconnection: true,
         reconnectionAttempts: Infinity,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
         timeout: 20000,
-      });
+      };
+      globalSocketInstance = socketUrl ? io(socketUrl, socketOptions) : io(socketOptions);
       socketRef.current = globalSocketInstance;
     } else if (globalSocketInstance && !socketRef.current) {
       // Reuse existing global socket instance

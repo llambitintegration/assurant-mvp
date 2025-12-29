@@ -27,7 +27,7 @@ export const getApiUrl = (): string => {
   return '';
 };
 
-export const getSocketUrl = (): string => {
+export const getSocketUrl = (): string | undefined => {
   // First check runtime-injected environment variables
   if (window.VITE_SOCKET_URL) {
     return window.VITE_SOCKET_URL;
@@ -46,8 +46,8 @@ export const getSocketUrl = (): string => {
     return apiUrl.replace('http://', 'ws://');
   }
 
-  // Final fallback - use empty string for relative URLs (Vite proxy handles routing)
-  return '';
+  // Return undefined so Socket.io uses the current page origin (Vite proxy handles routing)
+  return undefined;
 };
 
 export default {
