@@ -1,6 +1,6 @@
 import session from "express-session";
 import db from "../config/db";
-import { isProduction } from "../shared/utils";
+import { isProduction, isDocker } from "../shared/utils";
 import * as cookieSignature from "cookie-signature";
 import { randomBytes } from "crypto";
 
@@ -71,8 +71,8 @@ const sessionConfig = {
     httpOnly: true,
     // For mobile app support in production, use "none", for local development use "lax"
     sameSite: "lax" as const,
-    // Secure only in production (HTTPS required for sameSite: "none")
-    secure: isProduction(),
+    // Secure only in production with HTTPS (not in Docker which uses HTTP localhost)
+    secure: isProduction() && !isDocker(),
     domain: undefined,
     maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
   },

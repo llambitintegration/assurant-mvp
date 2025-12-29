@@ -14,6 +14,7 @@ import {getLoggedInUserIdFromSocket} from "../socket.io/util";
 import {startCronJobs} from "../cron_jobs";
 import FileConstants from "../shared/file-constants";
 import DbTaskStatusChangeListener from "../pg_notify_listeners/db-task-status-changed";
+import {isDocker, isReplit} from "../shared/utils";
 
 function normalizePort(val?: string) {
   const p = parseInt(val || "0", 10);
@@ -27,11 +28,64 @@ app.set("port", port);
 
 const server = http.createServer(app);
 
+/**
+ * Build Socket.io CORS origins based on environment
+ * Supports Docker, Replit, and local development
+ */
+const getSocketCorsOrigins = (): string[] | string => {
+  const corsEnv = process.env.SOCKET_IO_CORS;
+  
+  // If wildcard is set, allow all origins
+  if (corsEnv === '*') {
+    return '*';
+  }
+  
+  // Start with configured origins (if any)
+  const origins: string[] = corsEnv ? corsEnv.split(',').map(o => o.trim()) : [];
+  
+  // Add Docker-specific origins
+  if (isDocker()) {
+    origins.push(
+      "http://frontend:5000",
+      "http://localhost:5000",
+      "http://localhost:3000"
+    );
+  }
+  
+  // Add Replit-detected origins
+  if (isReplit()) {
+    const replitDomains = process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN;
+    if (replitDomains) {
+      replitDomains.split(',').forEach(domain => {
+        const cleanDomain = domain.trim().replace(/\/+$/, '');
+        if (cleanDomain) {
+          origins.push(`https://${cleanDomain}`);
+          origins.push(`http://${cleanDomain}`);
+        }
+      });
+    }
+  }
+  
+  // Always include localhost for development
+  origins.push(
+    "http://localhost:5000",
+    "http://localhost:3000",
+    "http://127.0.0.1:5000"
+  );
+  
+  // Return unique origins or wildcard if empty
+  const uniqueOrigins = [...new Set(origins.filter(Boolean))];
+  return uniqueOrigins.length > 0 ? uniqueOrigins : '*';
+};
+
+const socketCorsOrigins = getSocketCorsOrigins();
+console.log('[Socket.io] CORS origins:', Array.isArray(socketCorsOrigins) ? socketCorsOrigins.slice(0, 5) : socketCorsOrigins);
+
 const io = new Server(server, {
   transports: ["polling", "websocket"],
   path: "/socket",
   cors: {
-    origin: (process.env.SOCKET_IO_CORS || "*").split(","),
+    origin: socketCorsOrigins,
     credentials: true
   },
   cookie: true,

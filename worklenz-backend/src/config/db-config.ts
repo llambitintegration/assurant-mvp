@@ -34,6 +34,9 @@ const config = process.env.DATABASE_URL
       max: +(process.env.DB_MAX_CLIENTS || '50'),
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
+      // Add keepalive for NeonDB cloud connections
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000,
     }
   : {
       user: process.env.DB_USER,
@@ -45,6 +48,9 @@ const config = process.env.DATABASE_URL
       max: +(process.env.DB_MAX_CLIENTS || '50'),
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
+      // Add keepalive for database connections
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000,
     };
 
 export default config;

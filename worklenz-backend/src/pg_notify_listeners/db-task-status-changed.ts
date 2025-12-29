@@ -11,7 +11,12 @@ export default class DbTaskStatusChangeListener {
   public static async connect() {
     try {
 
-      const client = new Client(dbConfig);
+      const client = new Client({
+        ...dbConfig,
+        // Add keepalive for NeonDB persistent connections (LISTEN/NOTIFY)
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 10000, // Start keepalive after 10s
+      });
 
       await client.connect();
 

@@ -17,11 +17,14 @@ import apiRouter from "./routes/apis";
 import authRouter from "./routes/auth";
 import emailTemplatesRouter from "./routes/email-templates";
 import public_router from "./routes/public";
-import { isInternalServer, isProduction } from "./shared/utils";
+import { isInternalServer, isProduction, isDocker, isReplit, getEnvironmentMode } from "./shared/utils";
 import sessionMiddleware from "./middlewares/session-middleware";
 import safeControllerFunction from "./shared/safe-controller-function";
 import AwsSesController from "./controllers/aws-ses-controller";
 import { CSP_POLICIES } from "./shared/csp";
+
+// Log environment mode on startup
+console.log(`[ENV] Running in ${getEnvironmentMode()} mode`);
 
 const app = express();
 
@@ -51,6 +54,12 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 });
 
 // CORS configuration
+// Environment-aware CORS origins based on USE_DOCKER, Replit detection, or local dev
+
+/**
+ * Extract Replit domain origins for CORS whitelist
+ * Replit auto-sets REPLIT_DOMAINS with the app's public URL(s)
+ */
 const getReplitOrigins = (): string[] => {
   const origins: string[] = [];
   const replitDomains = process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN;
@@ -73,19 +82,65 @@ const getReplitOrigins = (): string[] => {
   return [...new Set(origins)];
 };
 
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:5000",
-  "http://localhost:5173",
-  "http://127.0.0.1:3000",
-  "http://127.0.0.1:5000",
-  "http://127.0.0.1:5173",
-  process.env.SERVER_CORS || "",
-  process.env.FRONTEND_URL || "",
-  ...getReplitOrigins(),
-].filter(Boolean);
+/**
+ * Get Docker-specific origins for CORS whitelist
+ * In Docker, frontend container communicates via container name or localhost
+ */
+const getDockerOrigins = (): string[] => {
+  if (!isDocker()) return [];
+  return [
+    "http://frontend:5000",    // Docker internal network
+    "http://backend:3000",     // Docker internal network
+    "http://localhost:5000",   // Host access
+    "http://localhost:3000",   // Host access
+    "http://127.0.0.1:5000",
+    "http://127.0.0.1:3000",
+  ];
+};
 
+/**
+ * Build allowed origins list based on environment
+ * Priority: Explicit SERVER_CORS > Docker origins > Replit origins > Local defaults
+ */
+const buildAllowedOrigins = (): string[] => {
+  const origins: string[] = [
+    // Always include localhost for development
+    "http://localhost:3000",
+    "http://localhost:5000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5000",
+    "http://127.0.0.1:5173",
+  ];
+  
+  // Add Docker-specific origins
+  if (isDocker()) {
+    origins.push(...getDockerOrigins());
+    console.log('[CORS] Docker mode: Added Docker container origins');
+  }
+  
+  // Add Replit-detected origins
+  if (isReplit()) {
+    origins.push(...getReplitOrigins());
+    console.log('[CORS] Replit mode: Added Replit domain origins');
+  }
+  
+  // Add explicitly configured origins
+  if (process.env.SERVER_CORS && process.env.SERVER_CORS !== '*') {
+    origins.push(process.env.SERVER_CORS);
+  }
+  if (process.env.FRONTEND_URL) {
+    origins.push(process.env.FRONTEND_URL);
+  }
+  
+  return [...new Set(origins.filter(Boolean))];
+};
+
+const allowedOrigins = buildAllowedOrigins();
 const isWildcardCors = process.env.SERVER_CORS === '*';
+
+console.log('[CORS] Wildcard CORS:', isWildcardCors);
+console.log('[CORS] Allowed origins:', allowedOrigins.slice(0, 10), allowedOrigins.length > 10 ? `... and ${allowedOrigins.length - 10} more` : '');
 
 app.use(cors({
   origin: (origin, callback) => {

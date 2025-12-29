@@ -36,6 +36,16 @@ export function isProduction() {
   return process.env.NODE_ENV === "production";
 }
 
+/** Returns true if running in Docker environment */
+export function isDocker() {
+  return process.env.USE_DOCKER === "true";
+}
+
+/** Returns true if running on Replit (auto-detected via REPLIT_DOMAINS) */
+export function isReplit() {
+  return !!(process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN || process.env.REPL_ID);
+}
+
 /** Returns true if uat or dev */
 export function isTestServer() {
   const hostname = process.env.HOSTNAME;
@@ -51,6 +61,18 @@ export function isLocalServer() {
 /** Returns true of isLocal or isTest server */
 export function isInternalServer() {
   return isLocalServer() || isTestServer();
+}
+
+/** 
+ * Get the current environment mode for logging/debugging
+ * Returns: 'docker', 'replit', 'local', or 'production'
+ */
+export function getEnvironmentMode(): string {
+  if (isDocker()) return 'docker';
+  if (isReplit()) return 'replit';
+  if (isLocalServer()) return 'local';
+  if (isProduction()) return 'production';
+  return 'development';
 }
 
 /**
