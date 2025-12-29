@@ -1,3 +1,16 @@
+# =============================================================================
+# WORKLENZ DOCKER COMPOSE CONFIGURATION
+# =============================================================================
+# Environment Modes:
+#   - Cloud DB (NeonDB): docker-compose up
+#   - Local PostgreSQL: docker-compose --profile local up
+#
+# Configuration:
+#   1. Copy docs/env-docker.example to worklenz-backend/.env
+#   2. Copy docs/env-frontend.example to worklenz-frontend/.env.production
+#   3. Update database credentials and other secrets
+# =============================================================================
+
 services:
   frontend:
     build:
@@ -9,6 +22,16 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    # Environment variables for runtime configuration
+    # These override defaults in the Dockerfile's env-config.sh
+    environment:
+      - NODE_ENV=production
+      - USE_DOCKER=true
+      # API URL for browser access (not container network)
+      # Use localhost since browser can't resolve container names
+      - VITE_API_URL=http://localhost:3000
+      - VITE_SOCKET_URL=ws://localhost:3000
+    # Optional: load additional env vars from file
     env_file:
       - ./worklenz-frontend/.env.production
     networks:
@@ -28,6 +51,9 @@ services:
       minio:
         condition: service_started
     restart: unless-stopped
+    environment:
+      - USE_DOCKER=true
+      - NODE_ENV=production
     env_file:
       - ./worklenz-backend/.env
     networks:
