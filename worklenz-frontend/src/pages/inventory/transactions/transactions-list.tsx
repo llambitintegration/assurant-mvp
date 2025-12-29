@@ -17,6 +17,7 @@ import {
 } from '@/features/inventory/transactions/transactionsSlice';
 import { TransactionType, ITransaction } from '@/types/inventory/transaction.types';
 import TransactionFilterBar from './transaction-filter-bar';
+import { ErrorBoundary } from '@/components/error-boundary';
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
@@ -174,37 +175,39 @@ const TransactionsList = () => {
   ];
 
   return (
-    <Flex vertical gap={16}>
-      <CustomPageHeader
-        title={`Transactions (${total})`}
-        children={
-          <Space>
-            {/* Add export functionality here if needed */}
-          </Space>
-        }
-      />
+    <ErrorBoundary>
+      <Flex vertical gap={16}>
+        <CustomPageHeader
+          title={`Transactions (${total})`}
+          children={
+            <Space>
+              {/* Add export functionality here if needed */}
+            </Space>
+          }
+        />
 
-      <TransactionFilterBar />
+        <TransactionFilterBar />
 
-      <Table
-        dataSource={transactions}
-        columns={columns}
-        rowKey="id"
-        loading={isLoading}
-        pagination={{
-          current: page,
-          pageSize: pageSize,
-          total: total,
-          showSizeChanger: true,
-          showTotal: (total) => `Total ${total} transactions`,
-          onChange: (page, pageSize) => {
-            dispatch(setPage(page));
-            dispatch(setPageSize(pageSize));
-          },
-        }}
-        scroll={{ x: 1400 }}
-      />
-    </Flex>
+        <Table
+          dataSource={transactions}
+          columns={columns}
+          rowKey="id"
+          loading={isLoading}
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: total,
+            showSizeChanger: true,
+            showTotal: (total) => `Total ${total} transactions`,
+            onChange: (page, pageSize) => {
+              dispatch(setPage(page));
+              dispatch(setPageSize(pageSize));
+            },
+          }}
+          scroll={{ x: 1400 }}
+        />
+      </Flex>
+    </ErrorBoundary>
   );
 };
 

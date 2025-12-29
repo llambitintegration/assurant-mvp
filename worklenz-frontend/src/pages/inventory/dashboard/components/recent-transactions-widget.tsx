@@ -8,7 +8,7 @@ import { useAppSelector } from '@/hooks/useAppSelector';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { fetchTransactions, setPageSize } from '@/features/inventory/transactions/transactionsSlice';
+import { fetchRecentTransactions } from '@/features/inventory/transactions/transactionsSlice';
 import type { ColumnsType } from 'antd/es/table';
 import { ITransaction, TransactionType } from '@/types/inventory/transaction.types';
 import dayjs from 'dayjs';
@@ -27,12 +27,11 @@ const getTransactionTypeBadge = (type: TransactionType) => {
 const RecentTransactionsWidget = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { transactions, isLoading } = useAppSelector(state => state.inventoryTransactions);
+  const { recentTransactions, recentTransactionsLoading } = useAppSelector(state => state.inventoryTransactions);
 
   useEffect(() => {
     // Fetch only 10 recent transactions for the widget
-    dispatch(setPageSize(10));
-    dispatch(fetchTransactions());
+    dispatch(fetchRecentTransactions(10));
   }, [dispatch]);
 
   const columns: ColumnsType<ITransaction> = [
@@ -92,7 +91,7 @@ const RecentTransactionsWidget = () => {
         </Button>
       }
     >
-      {transactions.length === 0 ? (
+      {recentTransactions.length === 0 ? (
         <Empty
           description="No recent transactions"
           image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -100,9 +99,9 @@ const RecentTransactionsWidget = () => {
       ) : (
         <Table
           columns={columns}
-          dataSource={transactions}
+          dataSource={recentTransactions}
           rowKey="id"
-          loading={isLoading}
+          loading={recentTransactionsLoading}
           pagination={false}
           size="small"
         />

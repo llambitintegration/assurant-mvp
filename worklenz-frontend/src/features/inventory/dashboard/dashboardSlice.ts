@@ -6,6 +6,7 @@ import {
   IInventoryValueByCategory,
 } from '@/types/inventory/dashboard.types';
 import logger from '@/utils/errorLogger';
+import { validateDashboardResponse } from '@/utils/api-validators';
 
 // State interface
 export interface IDashboardState {
@@ -40,6 +41,11 @@ export const fetchDashboardData = createAsyncThunk(
 
       if (!response.done) {
         return rejectWithValue(response.message || 'Failed to fetch dashboard data');
+      }
+
+      // Validate response structure
+      if (!validateDashboardResponse(response.body)) {
+        return rejectWithValue('Invalid dashboard data structure received from server');
       }
 
       return response.body;

@@ -11,6 +11,11 @@ import {
   ICreateStorageLocationDto,
   IUpdateStorageLocationDto,
 } from '@/types/inventory/storage-location.types';
+import {
+  validatePaginatedResponse,
+  validateEntityResponse,
+  validateArrayResponse,
+} from '@/utils/api-validators';
 
 type StorageLocationsState = {
   // Data
@@ -65,7 +70,7 @@ const initialState: StorageLocationsState = {
  */
 export const fetchStorageLocations = createAsyncThunk(
   'storageLocations/fetchStorageLocations',
-  async (_, { getState }) => {
+  async (_, { getState, rejectWithValue }) => {
     const state = (getState() as any).inventoryStorageLocations;
 
     const params: any = {
@@ -87,6 +92,16 @@ export const fetchStorageLocations = createAsyncThunk(
     }
 
     const response = await storageLocationsApiService.getStorageLocations(params);
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to fetch storage locations');
+    }
+
+    // Validate response structure
+    if (!validatePaginatedResponse(response.body)) {
+      return rejectWithValue('Invalid storage locations data structure received from server');
+    }
+
     return response.body;
   }
 );
@@ -96,8 +111,18 @@ export const fetchStorageLocations = createAsyncThunk(
  */
 export const fetchLocationHierarchy = createAsyncThunk(
   'storageLocations/fetchLocationHierarchy',
-  async () => {
+  async (_, { rejectWithValue }) => {
     const response = await storageLocationsApiService.getLocationHierarchy();
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to fetch location hierarchy');
+    }
+
+    // Validate response structure
+    if (!validateArrayResponse(response.body)) {
+      return rejectWithValue('Invalid location hierarchy data structure received from server');
+    }
+
     return response.body;
   }
 );
@@ -107,8 +132,18 @@ export const fetchLocationHierarchy = createAsyncThunk(
  */
 export const createStorageLocation = createAsyncThunk(
   'storageLocations/createStorageLocation',
-  async (data: ICreateStorageLocationDto, { dispatch }) => {
+  async (data: ICreateStorageLocationDto, { dispatch, rejectWithValue }) => {
     const response = await storageLocationsApiService.createStorageLocation(data);
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to create storage location');
+    }
+
+    // Validate response structure
+    if (!validateEntityResponse(response.body)) {
+      return rejectWithValue('Invalid response structure received from server');
+    }
+
     // Refresh the list after creation
     dispatch(fetchStorageLocations());
     dispatch(fetchLocationHierarchy());
@@ -121,8 +156,18 @@ export const createStorageLocation = createAsyncThunk(
  */
 export const updateStorageLocation = createAsyncThunk(
   'storageLocations/updateStorageLocation',
-  async ({ id, data }: { id: string; data: IUpdateStorageLocationDto }, { dispatch }) => {
+  async ({ id, data }: { id: string; data: IUpdateStorageLocationDto }, { dispatch, rejectWithValue }) => {
     const response = await storageLocationsApiService.updateStorageLocation(id, data);
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to update storage location');
+    }
+
+    // Validate response structure
+    if (!validateEntityResponse(response.body)) {
+      return rejectWithValue('Invalid response structure received from server');
+    }
+
     // Refresh the list after update
     dispatch(fetchStorageLocations());
     dispatch(fetchLocationHierarchy());
@@ -135,8 +180,13 @@ export const updateStorageLocation = createAsyncThunk(
  */
 export const deleteStorageLocation = createAsyncThunk(
   'storageLocations/deleteStorageLocation',
-  async (id: string, { dispatch }) => {
-    await storageLocationsApiService.deleteStorageLocation(id);
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const response = await storageLocationsApiService.deleteStorageLocation(id);
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to delete storage location');
+    }
+
     // Refresh the list after deletion
     dispatch(fetchStorageLocations());
     dispatch(fetchLocationHierarchy());

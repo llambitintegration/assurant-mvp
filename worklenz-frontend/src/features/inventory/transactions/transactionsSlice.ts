@@ -21,6 +21,11 @@ type TransactionsState = {
   isLoading: boolean;
   error: string | null;
 
+  // Recent transactions (for dashboard widget)
+  recentTransactions: ITransaction[];
+  recentTransactionsLoading: boolean;
+  recentTransactionsError: string | null;
+
   // Filters
   filters: ITransactionFilters;
   dateRange: [string, string] | null;
@@ -43,6 +48,11 @@ const initialState: TransactionsState = {
   isLoading: false,
   error: null,
 
+  // Recent transactions (for dashboard widget)
+  recentTransactions: [],
+  recentTransactionsLoading: false,
+  recentTransactionsError: null,
+
   // Filters
   filters: {},
   dateRange: null,
@@ -62,23 +72,70 @@ const initialState: TransactionsState = {
  */
 export const fetchTransactions = createAsyncThunk(
   'transactions/fetchTransactions',
-  async (_, { getState }) => {
-    const state = (getState() as any).inventoryTransactions as TransactionsState;
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const state = (getState() as any).inventoryTransactions as TransactionsState;
 
-    const params: Partial<ITransactionFilters> = {
-      ...state.filters,
-      page: state.page,
-      size: state.pageSize,
-    };
+      const params: Partial<ITransactionFilters> = {
+        ...state.filters,
+        page: state.page,
+        size: state.pageSize,
+      };
 
-    // Add date range if set
-    if (state.dateRange) {
-      params.start_date = state.dateRange[0];
-      params.end_date = state.dateRange[1];
+      // Add date range if set
+      if (state.dateRange) {
+        params.start_date = state.dateRange[0];
+        params.end_date = state.dateRange[1];
+      }
+
+      const response = await transactionsApiService.getTransactions(params);
+
+      // Validate response structure
+      if (!response.done || !response.body) {
+        return rejectWithValue('Invalid response from server');
+      }
+
+      // Validate response body has required fields
+      if (!Array.isArray(response.body.data)) {
+        return rejectWithValue('Invalid data format received from server');
+      }
+
+      if (typeof response.body.total !== 'number') {
+        return rejectWithValue('Invalid total count received from server');
+      }
+
+      return response.body;
+    } catch (error: any) {
+      console.error('Failed to fetch transactions:', error);
+      return rejectWithValue(error.message || 'Failed to fetch transactions');
     }
+  }
+);
 
-    const response = await transactionsApiService.getTransactions(params);
-    return response.body;
+/**
+ * Async thunk to fetch recent transactions for dashboard widget
+ * This does NOT modify global pagination state to avoid circular dependencies
+ */
+export const fetchRecentTransactions = createAsyncThunk(
+  'transactions/fetchRecentTransactions',
+  async (limit: number, { rejectWithValue }) => {
+    try {
+      const params: Partial<ITransactionFilters> = {
+        page: 1,
+        size: limit,
+      };
+
+      const response = await transactionsApiService.getTransactions(params);
+
+      // Validate response structure
+      if (!response.done || !response.body) {
+        return rejectWithValue('Invalid response from server');
+      }
+
+      return response.body;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch recent transactions');
+    }
   }
 );
 
@@ -235,6 +292,24 @@ const transactionsSlice = createSlice({
       .addCase(createTransaction.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.error.message || 'Failed to create transaction';
+      })
+      // Fetch recent transactions (for dashboard widget)
+      .addCase(fetchRecentTransactions.pending, (state) => {
+        state.recentTransactionsLoading = true;
+        state.recentTransactionsError = null;
+      })
+      .addCase(fetchRecentTransactions.fulfilled, (state, action) => {
+        state.recentTransactionsLoading = false;
+        if (action.payload && action.payload.data) {
+          state.recentTransactions = action.payload.data;
+        } else {
+          state.recentTransactions = [];
+          state.recentTransactionsError = 'No data received from server';
+        }
+      })
+      .addCase(fetchRecentTransactions.rejected, (state, action) => {
+        state.recentTransactionsLoading = false;
+        state.recentTransactionsError = action.payload as string || action.error.message || 'Failed to fetch recent transactions';
       });
   },
 });

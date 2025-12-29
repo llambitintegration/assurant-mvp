@@ -10,6 +10,10 @@ import {
   ICreateSupplierDto,
   IUpdateSupplierDto,
 } from '@/types/inventory/supplier.types';
+import {
+  validatePaginatedResponse,
+  validateEntityResponse,
+} from '@/utils/api-validators';
 
 type SuppliersState = {
   // Data
@@ -60,7 +64,7 @@ const initialState: SuppliersState = {
  */
 export const fetchSuppliers = createAsyncThunk(
   'suppliers/fetchSuppliers',
-  async (_, { getState }) => {
+  async (_, { getState, rejectWithValue }) => {
     const state = (getState() as any).inventorySuppliers as SuppliersState;
 
     const params: any = {
@@ -78,6 +82,16 @@ export const fetchSuppliers = createAsyncThunk(
     }
 
     const response = await suppliersApiService.getSuppliers(params);
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to fetch suppliers');
+    }
+
+    // Validate response structure
+    if (!validatePaginatedResponse(response.body)) {
+      return rejectWithValue('Invalid suppliers data structure received from server');
+    }
+
     return response.body;
   }
 );
@@ -87,8 +101,18 @@ export const fetchSuppliers = createAsyncThunk(
  */
 export const createSupplier = createAsyncThunk(
   'suppliers/createSupplier',
-  async (data: ICreateSupplierDto, { dispatch }) => {
+  async (data: ICreateSupplierDto, { dispatch, rejectWithValue }) => {
     const response = await suppliersApiService.createSupplier(data);
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to create supplier');
+    }
+
+    // Validate response structure
+    if (!validateEntityResponse(response.body)) {
+      return rejectWithValue('Invalid response structure received from server');
+    }
+
     // Refresh the list after creation
     dispatch(fetchSuppliers());
     return response.body;
@@ -100,8 +124,18 @@ export const createSupplier = createAsyncThunk(
  */
 export const updateSupplier = createAsyncThunk(
   'suppliers/updateSupplier',
-  async ({ id, data }: { id: string; data: IUpdateSupplierDto }, { dispatch }) => {
+  async ({ id, data }: { id: string; data: IUpdateSupplierDto }, { dispatch, rejectWithValue }) => {
     const response = await suppliersApiService.updateSupplier(id, data);
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to update supplier');
+    }
+
+    // Validate response structure
+    if (!validateEntityResponse(response.body)) {
+      return rejectWithValue('Invalid response structure received from server');
+    }
+
     // Refresh the list after update
     dispatch(fetchSuppliers());
     return response.body;
@@ -113,8 +147,13 @@ export const updateSupplier = createAsyncThunk(
  */
 export const deleteSupplier = createAsyncThunk(
   'suppliers/deleteSupplier',
-  async (id: string, { dispatch }) => {
-    await suppliersApiService.deleteSupplier(id);
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const response = await suppliersApiService.deleteSupplier(id);
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to delete supplier');
+    }
+
     // Refresh the list after deletion
     dispatch(fetchSuppliers());
     return id;

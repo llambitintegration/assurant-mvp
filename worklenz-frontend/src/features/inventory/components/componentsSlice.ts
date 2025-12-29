@@ -12,6 +12,11 @@ import {
   ILowStockComponent,
   OwnerType,
 } from '@/types/inventory/component.types';
+import {
+  validatePaginatedResponse,
+  validateEntityResponse,
+  validateArrayResponse,
+} from '@/utils/api-validators';
 
 type ComponentsState = {
   // Data
@@ -82,7 +87,7 @@ const initialState: ComponentsState = {
  */
 export const fetchComponents = createAsyncThunk(
   'components/fetchComponents',
-  async (_, { getState }) => {
+  async (_, { getState, rejectWithValue }) => {
     const state = (getState() as any).inventoryComponents as ComponentsState;
 
     const params: any = {
@@ -120,6 +125,16 @@ export const fetchComponents = createAsyncThunk(
     }
 
     const response = await componentsApiService.getComponents(params);
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to fetch components');
+    }
+
+    // Validate response structure
+    if (!validatePaginatedResponse(response.body)) {
+      return rejectWithValue('Invalid components data structure received from server');
+    }
+
     return response.body;
   }
 );
@@ -129,8 +144,18 @@ export const fetchComponents = createAsyncThunk(
  */
 export const fetchLowStockComponents = createAsyncThunk(
   'components/fetchLowStockComponents',
-  async () => {
+  async (_, { rejectWithValue }) => {
     const response = await componentsApiService.getLowStockComponents();
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to fetch low stock components');
+    }
+
+    // Validate response structure
+    if (!validateArrayResponse(response.body)) {
+      return rejectWithValue('Invalid low stock components data structure received from server');
+    }
+
     return response.body;
   }
 );
@@ -140,8 +165,18 @@ export const fetchLowStockComponents = createAsyncThunk(
  */
 export const createComponent = createAsyncThunk(
   'components/createComponent',
-  async (data: ICreateComponentDto, { dispatch }) => {
+  async (data: ICreateComponentDto, { dispatch, rejectWithValue }) => {
     const response = await componentsApiService.createComponent(data);
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to create component');
+    }
+
+    // Validate response structure
+    if (!validateEntityResponse(response.body)) {
+      return rejectWithValue('Invalid response structure received from server');
+    }
+
     // Refresh the list after creation
     dispatch(fetchComponents());
     return response.body;
@@ -153,8 +188,18 @@ export const createComponent = createAsyncThunk(
  */
 export const updateComponent = createAsyncThunk(
   'components/updateComponent',
-  async ({ id, data }: { id: string; data: IUpdateComponentDto }, { dispatch }) => {
+  async ({ id, data }: { id: string; data: IUpdateComponentDto }, { dispatch, rejectWithValue }) => {
     const response = await componentsApiService.updateComponent(id, data);
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to update component');
+    }
+
+    // Validate response structure
+    if (!validateEntityResponse(response.body)) {
+      return rejectWithValue('Invalid response structure received from server');
+    }
+
     // Refresh the list after update
     dispatch(fetchComponents());
     return response.body;
@@ -166,8 +211,13 @@ export const updateComponent = createAsyncThunk(
  */
 export const deleteComponent = createAsyncThunk(
   'components/deleteComponent',
-  async (id: string, { dispatch }) => {
-    await componentsApiService.deleteComponent(id);
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const response = await componentsApiService.deleteComponent(id);
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to delete component');
+    }
+
     // Refresh the list after deletion
     dispatch(fetchComponents());
     return id;
@@ -179,8 +229,18 @@ export const deleteComponent = createAsyncThunk(
  */
 export const generateQrCode = createAsyncThunk(
   'components/generateQrCode',
-  async (id: string, { dispatch }) => {
+  async (id: string, { dispatch, rejectWithValue }) => {
     const response = await componentsApiService.generateQrCode(id);
+
+    if (!response.done) {
+      return rejectWithValue(response.message || 'Failed to generate QR code');
+    }
+
+    // Validate response structure
+    if (!validateEntityResponse(response.body)) {
+      return rejectWithValue('Invalid response structure received from server');
+    }
+
     // Refresh the list to show updated component with QR code
     dispatch(fetchComponents());
     return response.body;
