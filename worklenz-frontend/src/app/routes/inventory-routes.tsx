@@ -13,7 +13,7 @@ const CsvImport = lazy(() => import('@/pages/inventory/csv-import/csv-import-pag
 
 const inventoryRoutes: RouteObject[] = [
   {
-    path: 'inventory',
+    path: 'worklenz/inventory',
     element: <InventoryLayout />,
     children: [
       {

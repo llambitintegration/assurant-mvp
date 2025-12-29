@@ -68,3 +68,10 @@ The frontend uses Vite's proxy feature to route API requests to the backend:
   - Backend Socket.io now supports both polling and websocket transports with credentials
   - Frontend socket config returns undefined (not empty string) so Socket.io uses current page origin
   - Changed transport order to prefer polling first for better compatibility with Replit proxy
+  - Added HMR cleanup to disconnect old socket connections on module hot reload
+- **Inventory Layout Duplicate Header Fix (Dec 2025)** - Fixed duplicate header/ribbon rendering:
+  - Moved inventory routes from nested MainLayout children to top-level routes (like reporting)
+  - Changed inventory route path from relative 'inventory' to absolute 'worklenz/inventory'
+  - Removed inventory routes from main-routes.tsx, registered directly in index.tsx
+  - InventoryLayout now renders as standalone layout without MainLayout wrapper
+  - Fixed dashboardSlice to use response.body instead of response.data with null-safety checks

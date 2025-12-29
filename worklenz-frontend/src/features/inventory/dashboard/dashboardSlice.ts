@@ -42,7 +42,7 @@ export const fetchDashboardData = createAsyncThunk(
         return rejectWithValue(response.message || 'Failed to fetch dashboard data');
       }
 
-      return response.data;
+      return response.body;
     } catch (error: any) {
       return rejectWithValue(handleDashboardError(error, 'Fetch Dashboard Data'));
     }
@@ -63,9 +63,11 @@ const dashboardSlice = createSlice({
       })
       .addCase(fetchDashboardData.fulfilled, (state, action) => {
         state.loading = false;
-        state.stats = action.payload.stats;
-        state.lowStockAlerts = action.payload.low_stock_alerts;
-        state.inventoryValueByCategory = action.payload.inventory_value_by_category;
+        if (action.payload) {
+          state.stats = action.payload.stats || null;
+          state.lowStockAlerts = action.payload.low_stock_alerts || [];
+          state.inventoryValueByCategory = action.payload.inventory_value_by_category || [];
+        }
         state.error = null;
       })
       .addCase(fetchDashboardData.rejected, (state, action) => {

@@ -6,6 +6,7 @@ import mainRoutes from './main-routes';
 import notFoundRoute from './not-found-route';
 import accountSetupRoute from './account-setup-routes';
 import reportingRoutes from './reporting-routes';
+import inventoryRoutes from './inventory-routes';
 import { useAuthService } from '@/hooks/useAuth';
 import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -208,6 +209,7 @@ const publicRoutes = [...rootRoutes, ...authRoutes, notFoundRoute];
 // Apply combined guard to main routes that require both auth and setup completion
 const protectedMainRoutes = wrapRoutes(mainRoutes, AuthAndSetupGuard);
 const adminRoutes = wrapRoutes(reportingRoutes, AdminGuard);
+const inventoryProtectedRoutes = wrapRoutes(inventoryRoutes, AuthAndSetupGuard);
 // Setup route should be accessible without setup completion, only requires authentication
 const setupRoutes = wrapRoutes([accountSetupRoute], AuthGuard);
 
@@ -234,6 +236,7 @@ const withLicenseExpiryCheck = (routes: RouteObject[]): RouteObject[] => {
 
 const licenseCheckedMainRoutes = withLicenseExpiryCheck(protectedMainRoutes);
 const licenseCheckedAdminRoutes = withLicenseExpiryCheck(adminRoutes);
+const licenseCheckedInventoryRoutes = withLicenseExpiryCheck(inventoryProtectedRoutes);
 
 // Create optimized router with future flags for better performance
 const router = createBrowserRouter(
@@ -251,7 +254,7 @@ const router = createBrowserRouter(
           </Suspense>
         </ErrorBoundary>
       ),
-      children: [...licenseCheckedMainRoutes, ...licenseCheckedAdminRoutes, ...setupRoutes],
+      children: [...licenseCheckedMainRoutes, ...licenseCheckedAdminRoutes, ...licenseCheckedInventoryRoutes, ...setupRoutes],
     },
     ...publicRoutes,
   ],
