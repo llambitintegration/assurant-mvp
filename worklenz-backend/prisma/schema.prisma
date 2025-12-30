@@ -11,6 +11,81 @@ datasource db {
 }
 
 // ============================================================================
+// CORE WORKLENZ TABLES
+// ============================================================================
+
+model users {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name            String    @db.Text
+  email           String    @db.VarChar(255)
+  password        String?   @db.Text
+  active_team     String?   @db.Uuid
+  avatar_url      String?   @db.Text
+  setup_completed Boolean   @default(false)
+  user_no         BigInt
+  timezone_id     String    @db.Uuid
+  google_id       String?   @db.Text
+  socket_id       String?   @db.Text
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  last_active     DateTime  @default(now()) @db.Timestamptz(6)
+  temp_email      Boolean   @default(false)
+
+  // Relations
+  team_members team_members[]
+
+  @@index([email])
+}
+
+model teams {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name            String   @db.Text
+  user_id         String   @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  organization_id String?  @db.Uuid
+
+  // Relations
+  team_members team_members[]
+
+  @@index([user_id])
+}
+
+model roles {
+  id           String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name         String  @db.Text
+  team_id      String  @db.Uuid
+  default_role Boolean @default(false)
+  admin_role   Boolean @default(false)
+  owner        Boolean @default(false)
+
+  // Relations
+  team_members team_members[]
+
+  @@index([team_id])
+}
+
+model team_members {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id      String?   @db.Uuid
+  team_id      String    @db.Uuid
+  role_id      String    @db.Uuid
+  job_title_id String?   @db.Uuid
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  active       Boolean   @default(true)
+
+  // Relations
+  user users? @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  team teams  @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  role roles  @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([team_id])
+  @@index([role_id])
+}
+
+// ============================================================================
 // ENUMS
 // ============================================================================
 
@@ -300,6 +375,7 @@ model inv_components {
   unit                String?        @db.VarChar(50)
   unit_cost           Decimal?       @db.Decimal(10, 2)
   reorder_level       Int?           @default(0)
+  reorder_quantity    Int?           @default(0)
 
   // QR Code data
   qr_code_data        String?        @db.Text

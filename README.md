@@ -1,110 +1,74 @@
-<h1 align="center">
-    <a href="https://worklenz.com" target="_blank" rel="noopener noreferrer">
-        <img src="https://s3.us-west-2.amazonaws.com/worklenz.com/assets/icon-144x144.png" alt="Worklenz Logo" width="75">
-    </a>
-    <br>
-    Worklenz    
-</h1>
+# Assurant MVP
 
-<p align="center">
-    <a href="https://github.com/Worklenz/worklenz/blob/main/LICENSE">
-        <img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License">
-    </a>
-    <a href="https://github.com/Worklenz/worklenz/releases">
-        <img src="https://img.shields.io/github/v/release/Worklenz/worklenz" alt="Release">
-    </a>
-    <a href="https://github.com/Worklenz/worklenz/stargazers">
-        <img src="https://img.shields.io/github/stars/Worklenz/worklenz" alt="Stars">
-    </a>
-    <a href="https://github.com/Worklenz/worklenz/network/members">
-        <img src="https://img.shields.io/github/forks/Worklenz/worklenz" alt="Forks">
-    </a>
-    <a href="https://github.com/Worklenz/worklenz/issues">
-        <img src="https://img.shields.io/github/issues/Worklenz/worklenz" alt="Issues">
-    </a>
-    <a href="https://discord.gg/AVbkGXHA">
-        <img src="https://img.shields.io/discord/1202616582757556276?style=flat&logo=discord&logoColor=white&label=Discord&color=5865F2" alt="Issues">
-    </a>
-</p>
+An operations and work management platform designed for enterprise asset tracking, resource capacity management, and project coordination.
 
-<p align="center">
-    <a href="https://worklenz.com/task-management/">Task Management</a> |
-    <a href="https://worklenz.com/time-tracking/">Time Tracking</a> |
-    <a href="https://worklenz.com/analytics/">Analytics</a> |
-    <a href="https://worklenz.com/resource-management/">Resource Management</a> |
-    <a href="https://worklenz.com/templates/">Project Templates</a>
-</p>
+## Overview
 
-<p align="center">
-    <a href="https://worklenz.com" target="_blank">
-      <img
-        src="https://worklenz.s3.amazonaws.com/assets/screenshots/hero-view.png"
-        alt="Worklenz"
-        width="1200"
-      />
-    </a>
-</p>
+Assurant MVP is a comprehensive work management solution that combines project management, inventory tracking, and resource capacity planning into a unified platform. Built for organizations that need to coordinate projects, track physical inventory, and manage personnel and equipment resources effectively.
 
-Worklenz is a project management tool designed to help organizations improve their efficiency. It provides a
-comprehensive solution for managing projects, tasks, and collaboration within teams.
+## Key Features
 
-## Table of Contents
+### Inventory Management System
+A complete inventory tracking module for managing physical components, suppliers, and storage locations:
+- **Component Tracking**: Track parts with supplier and internal part numbers, quantities, and pricing
+- **QR Code Generation**: Auto-generated QR codes for each component enabling future barcode scanning integration
+- **CSV Bulk Import**: Import large datasets via CSV with validation and error reporting
+- **Transaction Audit Trail**: Full history of stock in/out/adjustments with user attribution
+- **Low Stock Monitoring**: Automatic alerts when inventory falls below minimum thresholds
+- **Multi-owner Support**: Categorize components by owner type (mechanical/electrical)
 
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-  - [Quick Start (Docker)](#-quick-start-docker---recommended)
-  - [Manual Installation](#️-manual-installation-for-development)
-- [Deployment](#deployment)
-  - [Local Development](#local-development-with-docker)
-  - [Remote Server Deployment](#remote-server-deployment)
-- [Configuration](#configuration)
-- [MinIO Integration](#minio-integration)
-- [Security](#security)
-- [Analytics](#analytics)
-- [Screenshots](#screenshots)
-- [Contributing](#contributing)
-- [License](#license)
+### Resource Capacity Management (RCM)
+Manage personnel and equipment resources across your organization:
+- **Resource Registry**: Track personnel (employees) and equipment with detailed profiles
+- **Skills & Proficiency**: Assign skills with proficiency levels (beginner to expert)
+- **Department Assignments**: Organize resources into hierarchical departments
+- **Availability Tracking**: Define work hours and availability windows
+- **Unavailability Periods**: Track vacation, sick leave, training, and maintenance
+- **Project Allocations**: Allocate resources to projects with percentage-based scheduling
 
-## Features
+### Enhanced Task Management
+Modern task organization with advanced productivity features:
+- **Dynamic Grouping**: Group tasks by Status, Priority, or Phase
+- **Drag-and-Drop**: Intuitive task reordering and status changes
+- **Bulk Operations**: Update multiple tasks simultaneously
+- **Progress Tracking**: Multiple progress calculation modes (manual, weighted, time-based)
+- **Recurring Tasks**: Schedule tasks to repeat on daily, weekly, monthly, or custom intervals
 
-- **Project Planning**: Create and organize projects, assign tasks to team members.
-- **Task Management**: Break down projects into smaller tasks, set due dates, priorities, and track progress.
-- **Collaboration**: Share files, leave comments, and communicate seamlessly with your team members.
-- **Time Tracking**: Monitor time spent on tasks and projects for better resource allocation and billing.
-- **Reporting**: Generate detailed reports on project status, team workload, and performance metrics.
+### Core Project Management
+Built on proven project management fundamentals:
+- **Project Planning**: Create and organize projects with phases and milestones
+- **Task Management**: Break down projects into tasks with priorities, due dates, and assignments
+- **Team Collaboration**: Share files, comments, and real-time updates
+- **Time Tracking**: Monitor time spent on tasks for resource planning and reporting
+- **Reporting & Analytics**: Generate insights on project status and team performance
 
 ## Tech Stack
 
-This repository contains the frontend and backend code for Worklenz.
-
-- **Frontend**: Built using React with Ant Design as the UI library.
-- **Backend**: Built using TypeScript, Express.js, with PostgreSQL as the database.
+| Layer | Technology |
+|-------|------------|
+| Frontend | React, TypeScript, Ant Design |
+| Backend | Node.js, Express.js, TypeScript |
+| Database | PostgreSQL with Prisma ORM (hybrid schema) |
+| Real-time | Socket.io for WebSocket communication |
+| Storage | S3-compatible (MinIO for local development) |
+| Containerization | Docker, Docker Compose |
 
 ## Requirements
 
-- Node.js version v18 or newer
-- PostgreSQL version v15 or newer
+- Node.js v18 or newer
+- PostgreSQL v15 or newer
 - Docker and Docker Compose (for containerized setup)
 
 ## Getting Started
 
-Choose your preferred setup method below. Docker is recommended for quick setup and testing.
+### Quick Start (Docker - Recommended)
 
-### 🚀 Quick Start (Docker - Recommended)
-
-The fastest way to get Worklenz running locally with all dependencies included.
-
-**Prerequisites:**
-- Docker and Docker Compose installed on your system
-- Git
-
-**Steps:**
+The fastest way to get the application running with all dependencies:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/Worklenz/worklenz.git
-cd worklenz
+git clone <repository-url>
+cd assurant-mvp
 ```
 
 2. Start the Docker containers:
@@ -122,52 +86,34 @@ docker-compose up -d
 docker-compose down
 ```
 
-**Alternative startup methods:**
-- **Windows**: Run `start.bat`
-- **Linux/macOS**: Run `./start.sh`
+### Manual Installation (For Development)
 
-**Video Guide**: For a visual walkthrough of the local Docker deployment process, check out our [step-by-step video guide](https://www.youtube.com/watch?v=AfwAKxJbqLg).
+For developers who want to run services individually:
 
-### 🛠️ Manual Installation (For Development)
-
-For developers who want to run the services individually or customize the setup.
-
-**Prerequisites:**
-- Node.js (version 18 or higher)
-- PostgreSQL (version 15 or higher)
-- An S3-compatible storage service (like MinIO) or Azure Blob Storage
-
-**Steps:**
-
-1. Clone the repository:
+1. Clone the repository and set up environment:
 ```bash
-git clone https://github.com/Worklenz/worklenz.git
-cd worklenz
-```
-
-2. Set up environment variables:
-```bash
+git clone <repository-url>
+cd assurant-mvp
 cp worklenz-backend/.env.template worklenz-backend/.env
-# Update the environment variables with your configuration
+# Update .env with your configuration
 ```
 
-3. Install dependencies:
+2. Install dependencies:
 ```bash
-# Backend dependencies
+# Backend
 cd worklenz-backend
 npm install
 
-# Frontend dependencies
+# Frontend
 cd ../worklenz-frontend
 npm install
 ```
 
-4. Set up the database:
+3. Set up the database:
 ```bash
-# Create a PostgreSQL database named worklenz_db
 cd worklenz-backend
 
-# Execute the SQL setup files in the correct order
+# Execute SQL setup files in order
 psql -U your_username -d worklenz_db -f database/sql/0_extensions.sql
 psql -U your_username -d worklenz_db -f database/sql/1_tables.sql
 psql -U your_username -d worklenz_db -f database/sql/indexes.sql
@@ -176,11 +122,14 @@ psql -U your_username -d worklenz_db -f database/sql/triggers.sql
 psql -U your_username -d worklenz_db -f database/sql/3_views.sql
 psql -U your_username -d worklenz_db -f database/sql/2_dml.sql
 psql -U your_username -d worklenz_db -f database/sql/5_database_user.sql
+
+# Run Prisma migrations for RCM and Inventory tables
+npx prisma migrate deploy
 ```
 
-5. Start the development servers:
+4. Start development servers:
 ```bash
-# Backend (single command for build, watch, and auto-restart)
+# Backend
 cd worklenz-backend
 npm run dev:all
 
@@ -189,282 +138,78 @@ cd worklenz-frontend
 npm run dev
 ```
 
-6. Access the application at http://localhost:5000
-
-## Deployment
-
-For local development, follow the [Quick Start (Docker)](#-quick-start-docker---recommended) section above.
-
-### Remote Server Deployment
-
-When deploying to a remote server:
-
-1. Set up the environment files with your server's hostname:
-   ```bash
-   # For HTTP/WS
-   ./update-docker-env.sh your-server-hostname
-   
-   # For HTTPS/WSS
-   ./update-docker-env.sh your-server-hostname true
-   ```
-
-2. Pull and run the latest Docker images:
-   ```bash
-   docker-compose pull
-   docker-compose up -d
-   ```
-
-3. Access the application through your server's hostname:
-   - Frontend: http://your-server-hostname:5000
-   - Backend API: http://your-server-hostname:3000
-
-4. **Video Guide**: For a complete walkthrough of deploying Worklenz to a remote server, check out our [deployment video guide](https://www.youtube.com/watch?v=CAZGu2iOXQs&t=10s).
+5. Access the application at http://localhost:5000
 
 ## Configuration
 
-### Database Setup
+### Database Options
 
-Worklenz supports two database deployment options: **local PostgreSQL** (via Docker) and **cloud-hosted PostgreSQL** (like Neon DB). You can easily switch between them using Docker Compose profiles.
+The application supports two database deployment modes:
 
-#### Option 1: Local PostgreSQL (Default)
-
-Run Worklenz with a local PostgreSQL database using Docker Compose profiles:
-
+**Local PostgreSQL (Docker)**
 ```bash
-# Start all services including local PostgreSQL database
 docker-compose --profile local up -d
-
-# Stop all services
-docker-compose --profile local down
 ```
 
-**Configuration:**
-- Copy `.env.local.example` to `worklenz-backend/.env`
-- Uses individual database parameters (DB_USER, DB_PASSWORD, DB_HOST, etc.)
-- Database runs in a Docker container
-- Automatic backups run every 24 hours
-
-#### Option 2: Neon DB (Cloud PostgreSQL)
-
-Run Worklenz with a cloud-hosted Neon database:
-
-**Prerequisites:**
-1. Create a free account at [neon.tech](https://neon.tech)
-2. Create a new project in the Neon dashboard
-3. Copy your connection string (format: `postgresql://user:pass@host.neon.tech/db?sslmode=require`)
-
-**Setup:**
-
+**Cloud PostgreSQL (NeonDB)**
 ```bash
-# 1. Configure environment
-cp .env.neon.example worklenz-backend/.env
-
-# 2. Edit worklenz-backend/.env and set your Neon connection string:
-#    DATABASE_URL=postgresql://your-user:your-pass@ep-xxx.region.neon.tech/your-db?sslmode=require
-#    DB_SSL_MODE=require
-
-# 3. Initialize the Neon database schema
-cd worklenz-backend
-npm install
-npm run db:init
-
-# 4. Start services (WITHOUT local database)
-cd ..
+# Set DATABASE_URL in worklenz-backend/.env
 docker-compose up -d
-
-# 5. Verify database connectivity
-curl http://localhost:3000/health
 ```
 
-**Benefits of Neon DB:**
-- No local database container needed
-- Built-in backups and point-in-time recovery
-- Database branching for development
-- Automatic scaling
-- Lower for Neon free tier)
-
-**Switching Between Modes:**
-
-To switch from local to Neon:
-```bash
-docker-compose --profile local down  # Stop local DB
-cp .env.neon.example worklenz-backend/.env  # Switch config
-npm run db:init  # Initialize Neon DB
-docker-compose up -d  # Start without local DB
-```
-
-To switch from Neon to local:
-```bash
-docker-compose down  # Stop services
-cp .env.local.example worklenz-backend/.env  # Switch config
-docker-compose --profile local up -d  # Start with local DB
-```
+See [Environment Configuration Guide](environment-configuration.md) for detailed setup instructions.
 
 ### Environment Variables
 
-Worklenz requires several environment variables to be configured for proper operation. These include:
+Key configuration options:
 
-- Database credentials (or DATABASE_URL for cloud databases)
-- SSL configuration (DB_SSL_MODE)
-- Session secrets
-- Storage configuration (S3 or Azure)
-- Authentication settings
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `DB_SSL_MODE` | SSL mode: `disable`, `require`, `verify-full` |
+| `JWT_SECRET` | Secret for JWT token signing |
+| `SESSION_SECRET` | Express session secret |
+| `SERVER_CORS` | Allowed CORS origins |
+| `VITE_API_URL` | Backend API URL for frontend |
 
-Please refer to the `.env.template`, `.env.local.example`, and `.env.neon.example` files for a full list of required variables.
+## Project Documentation
 
-The Docker setup uses environment variables to configure the services:
+| Document | Description |
+|----------|-------------|
+| [Environment Configuration](environment-configuration.md) | Docker, Replit, and local dev setup |
+| [Inventory System PRD](context/inventory-system-prd.md) | Product requirements for inventory module |
+| [Enhanced Task Management Guide](docs/enhanced-task-management-user-guide.md) | User guide for task features |
+| [Recurring Tasks Guide](docs/recurring-tasks-user-guide.md) | How to set up recurring tasks |
+| [Database Schema](worklenz-backend/database/README.md) | Database architecture and Prisma migration guide |
 
-- **Frontend:**
-  - `VITE_API_URL`: URL of the backend API (default: http://backend:3000 for container networking)
-  - `VITE_SOCKET_URL`: WebSocket URL for real-time communication (default: ws://backend:3000)
+## Database Architecture
 
-- **Backend:**
-  - Database connection parameters (or DATABASE_URL for connection string)
-  - SSL mode configuration (disable, require, verify-ca, verify-full)
-  - Storage configuration
-  - Other backend settings
+The application uses a hybrid schema approach:
 
-For custom configuration, edit the `.env` file or the `update-docker-env.sh` script.
+- **Legacy SQL Schema**: Core Worklenz tables managed via raw SQL files
+- **Prisma ORM**: New modules (RCM, Inventory) managed via Prisma migrations
 
-### Health Check
+ERD diagrams are available in `worklenz-backend/database/`:
+- `worklenz_db_revision_1.svg` - Core schema
+- `worklenz_db_revision_2.svg` - Extended schema
 
-Monitor your application and database connectivity using the health endpoint:
-
-```bash
-curl http://localhost:3000/health
-```
-
-Response (healthy):
-```json
-{
-  "status": "healthy",
-  "database": {
-    "connected": true,
-    "responseTime": "10ms"
-  },
-  "timestamp": "2025-01-15T10:30:00.000Z"
-}
-```
-
-## MinIO Integration
-
-The project uses MinIO as an S3-compatible object storage service, which provides an open-source alternative to AWS S3 for development and production.
-
-### Working with MinIO
-
-MinIO provides an S3-compatible API, so any code that works with S3 will work with MinIO by simply changing the endpoint URL. The backend has been configured to use MinIO by default, with no additional configuration required.
-
-- **MinIO Console**: http://localhost:9001
-  - Username: minioadmin
-  - Password: minioadmin
-
-- **Default Bucket**: worklenz-bucket (created automatically when the containers start)
-
-### Backend Storage Configuration
-
-The backend is pre-configured to use MinIO with the following settings:
-
-```javascript
-// S3 credentials with MinIO defaults
-export const REGION = process.env.AWS_REGION || "us-east-1";
-export const BUCKET = process.env.AWS_BUCKET || "worklenz-bucket";
-export const S3_URL = process.env.S3_URL || "http://minio:9000/worklenz-bucket";
-export const S3_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID || "minioadmin";
-export const S3_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY || "minioadmin";
-```
-
-### Security Considerations
-
-For production deployments:
-
-1. Use strong, unique passwords and keys for all services
-2. Do not commit `.env` files to version control
-3. Use a production-grade PostgreSQL setup with proper backup procedures
-4. Enable HTTPS for all public endpoints
-5. Review and update dependencies regularly
+See the [Database README](worklenz-backend/database/README.md) for full schema documentation and migration roadmap.
 
 ## Security
 
-If you believe you have found a security vulnerability in Worklenz, we encourage you to responsibly disclose this and not open a public issue. We will investigate all legitimate reports.
+- All inventory and RCM data is isolated by team (multi-tenancy)
+- Role-based access control (Admin/Owner required for inventory features)
+- JWT-based authentication with session management
+- HTTPS recommended for production deployments
 
-Email [info@worklenz.com](mailto:info@worklenz.com) to disclose any security vulnerabilities.
-
-## Analytics
-
-Worklenz uses Google Analytics to understand how the application is being used. This helps us improve the application and make better decisions about future development.
-
-### What We Track
-- Anonymous usage statistics
-- Page views and navigation patterns
-- Feature usage
-- Browser and device information
-
-### Privacy
-- Analytics is opt-in only
-- No personal information is collected
-- Users can opt-out at any time
-- Data is stored according to Google's privacy policy
-
-### How to Opt-Out
-If you've previously opted in and want to opt-out:
-1. Clear your browser's local storage for the Worklenz domain
-2. Or click the "Decline" button in the analytics notice if it appears
-
-## Screenshots
-
-<p align="center">
-  <a href="https://worklenz.com/features/task-management/" target="_blank">
-    <img
-      src="https://worklenz.s3.amazonaws.com/assets/screenshots/task-views-view.png"
-      alt="Worklenz task views"
-      width="1024"
-    />
-  </a>
-</p>
-<p align="center">
-  <a href="https://worklenz.com/features/time-tracking/" target="_blank">
-    <img
-      src="https://worklenz.s3.amazonaws.com/assets/screenshots/time-tracking-view.png"
-      alt="Worklenz time tracking"
-      width="1024"
-    />
-  </a>
-</p>
-<p align="center">
-  <a href="https://worklenz.com/features/analytics/" target="_blank">
-    <img
-      src="https://worklenz.s3.amazonaws.com/assets/screenshots/analytics-view.png"
-      alt="Worklenz analytics"
-      width="1024"
-    />
-  </a>
-</p>
-<p align="center">
-  <a href="https://worklenz.com/features/resource-management/" target="_blank">
-    <img
-      src="https://worklenz.s3.amazonaws.com/assets/screenshots/schedule-view.png"
-      alt="Worklenz scheduler"
-      width="1024"
-    />
-  </a>
-</p>
-<p align="center">
-  <a href="https://worklenz.com/features/templates/" target="_blank">
-    <img
-      src="https://worklenz.s3.amazonaws.com/assets/screenshots/templates-view.png"
-      alt="Worklenz templates"
-      width="1024"
-    />
-  </a>
-</p>
-
-## Contributing
-
-We welcome contributions from the community! If you'd like to contribute, please follow our [contributing guidelines](CONTRIBUTING.md).
+For security concerns, contact the development team.
 
 ## License
 
-Worklenz is open source and released under the [GNU Affero General Public License Version 3 (AGPLv3)](LICENSE).
+This project is licensed under the [GNU Affero General Public License Version 3 (AGPLv3)](LICENSE).
 
-By contributing to Worklenz, you agree that your contributions will be licensed under its AGPL.
+---
 
+<p align="center">
+  <sub>Built on the <a href="https://worklenz.com">Worklenz</a> open-source framework</sub>
+</p>
