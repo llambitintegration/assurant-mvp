@@ -1,0 +1,499 @@
+{
+  "dashboard": {
+    "title": "Prisma Migration - Shadow Mode Monitoring",
+    "description": "Monitors Prisma migration progress, shadow mode mismatches, and performance metrics",
+    "tags": ["prisma", "migration", "database"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Shadow Mode Mismatch Rate",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(shadow_mismatch_total[5m]) * 100",
+            "legendFormat": "{{module}} - {{queryName}}",
+            "refId": "A"
+          }
+        ],
+        "alert": {
+          "name": "High Mismatch Rate",
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [0.1],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "message": "Shadow mode mismatch rate exceeded 0.1% threshold",
+          "noDataState": "no_data"
+        },
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Mismatch Rate %",
+            "logBase": 1,
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "SQL vs Prisma Latency Comparison",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 0,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(db_sql_latency_ms_bucket[5m]))",
+            "legendFormat": "SQL p95",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(db_prisma_latency_ms_bucket[5m]))",
+            "legendFormat": "Prisma p95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(db_sql_latency_ms_bucket[5m]))",
+            "legendFormat": "SQL p99",
+            "refId": "C"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(db_prisma_latency_ms_bucket[5m]))",
+            "legendFormat": "Prisma p99",
+            "refId": "D"
+          }
+        ],
+        "alert": {
+          "name": "Latency Regression",
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [1.2],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["B", "5m", "now"],
+                "reducer": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "message": "Prisma latency is 20%+ higher than SQL",
+          "noDataState": "no_data"
+        },
+        "yaxes": [
+          {
+            "format": "ms",
+            "label": "Latency",
+            "logBase": 1,
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Error Rate by Source",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 8,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(db_sql_errors_total[5m])",
+            "legendFormat": "SQL - {{module}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(db_prisma_errors_total[5m])",
+            "legendFormat": "Prisma - {{module}}",
+            "refId": "B"
+          }
+        ],
+        "alert": {
+          "name": "Error Rate Spike",
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [0.01],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "or"
+              },
+              "query": {
+                "params": ["B", "5m", "now"]
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "message": "Prisma error rate spike detected",
+          "noDataState": "no_data"
+        },
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Errors/sec",
+            "logBase": 1,
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Query Count by Source",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 8,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(db_query_total{source=\"sql\"}[5m])",
+            "legendFormat": "SQL - {{module}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(db_query_total{source=\"prisma\"}[5m])",
+            "legendFormat": "Prisma - {{module}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Queries/sec",
+            "logBase": 1,
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Migration Progress by Module",
+        "type": "stat",
+        "gridPos": {
+          "x": 0,
+          "y": 16,
+          "w": 8,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "migration_progress_total{status=\"migrated\"}",
+            "legendFormat": "{{module}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "orientation": "horizontal",
+          "textMode": "value_and_name",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "percentage",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 50, "color": "yellow"},
+                {"value": 80, "color": "green"}
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Top Mismatches by Query",
+        "type": "table",
+        "gridPos": {
+          "x": 8,
+          "y": 16,
+          "w": 8,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "topk(10, sum by (module, queryName) (shadow_mismatch_total))",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "module": "Module",
+                "queryName": "Query",
+                "Value": "Mismatches"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Feature Flag Status",
+        "type": "stat",
+        "gridPos": {
+          "x": 16,
+          "y": 16,
+          "w": 8,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "feature_flag_enabled{flag=~\"USE_PRISMA_.*\"}",
+            "legendFormat": "{{flag}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "orientation": "vertical",
+          "textMode": "name",
+          "colorMode": "background",
+          "graphMode": "none"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "0", "text": "Disabled", "color": "red"},
+              {"type": "value", "value": "1", "text": "Enabled", "color": "green"}
+            ]
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Latency Heatmap - SQL",
+        "type": "heatmap",
+        "gridPos": {
+          "x": 0,
+          "y": 22,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(db_sql_latency_ms_bucket[5m])) by (le, module)",
+            "format": "heatmap",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "calculate": true,
+          "cellGap": 2,
+          "cellRadius": 1,
+          "color": {
+            "mode": "scheme",
+            "scheme": "Spectral"
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Latency Heatmap - Prisma",
+        "type": "heatmap",
+        "gridPos": {
+          "x": 12,
+          "y": 22,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(db_prisma_latency_ms_bucket[5m])) by (le, module)",
+            "format": "heatmap",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "calculate": true,
+          "cellGap": 2,
+          "cellRadius": 1,
+          "color": {
+            "mode": "scheme",
+            "scheme": "Spectral"
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "Shadow Mode Sample Rate",
+        "type": "gauge",
+        "gridPos": {
+          "x": 0,
+          "y": 30,
+          "w": 6,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "shadow_sample_rate",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 0.001, "color": "yellow"},
+                {"value": 0.01, "color": "green"}
+              ]
+            },
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1
+          }
+        }
+      },
+      {
+        "id": 11,
+        "title": "Total DB Queries (Last Hour)",
+        "type": "stat",
+        "gridPos": {
+          "x": 6,
+          "y": 30,
+          "w": 6,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "sum(increase(db_query_total[1h]))",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        }
+      },
+      {
+        "id": 12,
+        "title": "Mismatch Rate Trend (24h)",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 30,
+          "w": 12,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(shadow_mismatch_total[1h]))",
+            "legendFormat": "Mismatch Rate",
+            "refId": "A"
+          }
+        ],
+        "timeFrom": "24h",
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Mismatches/hour",
+            "logBase": 1
+          }
+        ]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "module",
+          "type": "query",
+          "query": "label_values(db_query_total, module)",
+          "multi": true,
+          "includeAll": true,
+          "allValue": ".*"
+        },
+        {
+          "name": "environment",
+          "type": "custom",
+          "query": "production,staging,development",
+          "current": {
+            "text": "production",
+            "value": "production"
+          }
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "iconColor": "blue",
+          "tags": ["deployment", "release"]
+        },
+        {
+          "name": "Incidents",
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "iconColor": "red",
+          "tags": ["incident", "rollback"]
+        }
+      ]
+    }
+  }
+}

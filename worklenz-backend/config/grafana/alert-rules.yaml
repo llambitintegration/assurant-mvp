@@ -1,0 +1,247 @@
+# Grafana Alert Rules for Prisma Migration Monitoring
+# Import this file into Grafana or use with Prometheus Alertmanager
+
+groups:
+  - name: prisma_migration_alerts
+    interval: 1m
+    rules:
+      # Critical Alerts
+      - alert: HighMismatchRate
+        expr: rate(shadow_mismatch_total[5m]) > 0.001
+        for: 5m
+        labels:
+          severity: critical
+          component: database
+          team: backend
+        annotations:
+          summary: "High mismatch rate in shadow mode"
+          description: "Shadow mode mismatch rate for {{ $labels.module }}.{{ $labels.queryName }} is {{ $value | humanizePercentage }} (threshold: 0.1%)"
+          runbook_url: "https://docs.company.com/runbooks/prisma-migration-mismatch"
+          dashboard_url: "https://grafana.company.com/d/prisma-migration"
+
+      - alert: PrismaLatencyRegression
+        expr: |
+          (
+            histogram_quantile(0.95, rate(db_prisma_latency_ms_bucket[5m]))
+            /
+            histogram_quantile(0.95, rate(db_sql_latency_ms_bucket[5m]))
+          ) > 1.2
+        for: 10m
+        labels:
+          severity: critical
+          component: database
+          team: backend
+        annotations:
+          summary: "Prisma latency regression detected"
+          description: "Prisma p95 latency is {{ $value | humanizePercentage }} of SQL latency (threshold: 120%)"
+          runbook_url: "https://docs.company.com/runbooks/prisma-latency-regression"
+
+      - alert: PrismaErrorRateSpike
+        expr: rate(db_prisma_errors_total[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          component: database
+          team: backend
+        annotations:
+          summary: "Prisma error rate spike"
+          description: "Prisma error rate for {{ $labels.module }} is {{ $value }} errors/sec"
+          runbook_url: "https://docs.company.com/runbooks/prisma-errors"
+
+      # High Priority Alerts
+      - alert: ModerateMismatchRate
+        expr: rate(shadow_mismatch_total[5m]) > 0.0001
+        for: 15m
+        labels:
+          severity: warning
+          component: database
+          team: backend
+        annotations:
+          summary: "Moderate mismatch rate in shadow mode"
+          description: "Shadow mode mismatch rate for {{ $labels.module }}.{{ $labels.queryName }} is {{ $value | humanizePercentage }} (threshold: 0.01%)"
+
+      - alert: LatencyP99Regression
+        expr: |
+          (
+            histogram_quantile(0.99, rate(db_prisma_latency_ms_bucket[5m]))
+            /
+            histogram_quantile(0.99, rate(db_sql_latency_ms_bucket[5m]))
+          ) > 1.5
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+          team: backend
+        annotations:
+          summary: "P99 latency regression"
+          description: "Prisma p99 latency is {{ $value | humanizePercentage }} of SQL latency"
+
+      - alert: SQLErrorRateIncrease
+        expr: |
+          rate(db_sql_errors_total[5m]) >
+          (avg_over_time(rate(db_sql_errors_total[5m])[1h:1m]) * 2)
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+          team: backend
+        annotations:
+          summary: "SQL error rate doubled"
+          description: "SQL error rate for {{ $labels.module }} is {{ $value }} errors/sec (2x baseline)"
+
+      # Medium Priority Alerts
+      - alert: LowShadowModeSampleRate
+        expr: shadow_sample_rate < 0.001
+        for: 30m
+        labels:
+          severity: info
+          component: monitoring
+          team: backend
+        annotations:
+          summary: "Shadow mode sample rate very low"
+          description: "Shadow mode sample rate is {{ $value | humanizePercentage }}. Consider increasing for better coverage."
+
+      - alert: FeatureFlagMisconfiguration
+        expr: |
+          (feature_flag_enabled{flag="USE_PRISMA_AUTH"} == 1) and
+          (rate(db_query_total{source="sql", module="auth"}[5m]) > 0)
+        for: 15m
+        labels:
+          severity: warning
+          component: configuration
+          team: backend
+        annotations:
+          summary: "Feature flag possibly not working"
+          description: "Prisma flag enabled for {{ $labels.module }} but SQL queries still being executed"
+
+      - alert: NoMigrationProgress
+        expr: |
+          (
+            sum(migration_progress_total{status="migrated"})
+            /
+            sum(migration_progress_total)
+          ) < 0.1
+        for: 1h
+        labels:
+          severity: info
+          component: migration
+          team: backend
+        annotations:
+          summary: "Migration progress stalled"
+          description: "Only {{ $value | humanizePercentage }} of queries migrated in the last hour"
+
+      # Performance Monitoring
+      - alert: HighDatabaseConnectionUsage
+        expr: db_connection_pool_usage > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+          team: backend
+        annotations:
+          summary: "High database connection pool usage"
+          description: "Database connection pool usage is {{ $value | humanizePercentage }}"
+
+      - alert: SlowQueryDetected
+        expr: |
+          histogram_quantile(0.99, rate(db_prisma_latency_ms_bucket[5m])) > 1000
+        for: 15m
+        labels:
+          severity: warning
+          component: performance
+          team: backend
+        annotations:
+          summary: "Slow Prisma queries detected"
+          description: "P99 Prisma query latency is {{ $value }}ms for {{ $labels.module }}"
+
+      # Data Quality
+      - alert: FieldMismatchPattern
+        expr: |
+          sum by (module, field) (rate(shadow_mismatch_total[10m])) > 0
+        for: 30m
+        labels:
+          severity: info
+          component: data-quality
+          team: backend
+        annotations:
+          summary: "Recurring field mismatch detected"
+          description: "Field {{ $labels.field }} in {{ $labels.module }} has recurring mismatches"
+
+      # Shadow Mode Health
+      - alert: ShadowModeDisabled
+        expr: shadow_mode_enabled == 0
+        for: 1h
+        labels:
+          severity: info
+          component: monitoring
+          team: backend
+        annotations:
+          summary: "Shadow mode disabled"
+          description: "Shadow mode for {{ $labels.module }} has been disabled. Migration monitoring limited."
+
+      - alert: ShadowModeComparisonErrors
+        expr: rate(shadow_comparison_errors_total[5m]) > 0.01
+        for: 10m
+        labels:
+          severity: warning
+          component: monitoring
+          team: backend
+        annotations:
+          summary: "Shadow mode comparison errors"
+          description: "Shadow mode comparison failing at {{ $value }} errors/sec for {{ $labels.module }}"
+
+# Alert routing configuration
+alerting_rules:
+  # Critical alerts - page immediately
+  - match:
+      severity: critical
+    receiver: pagerduty-backend
+    group_wait: 10s
+    group_interval: 5m
+    repeat_interval: 12h
+    routes:
+      - match:
+          component: database
+        receiver: pagerduty-database-oncall
+
+  # Warning alerts - notify but don't page
+  - match:
+      severity: warning
+    receiver: slack-backend-alerts
+    group_wait: 30s
+    group_interval: 10m
+    repeat_interval: 4h
+
+  # Info alerts - low priority notifications
+  - match:
+      severity: info
+    receiver: slack-backend-monitoring
+    group_wait: 5m
+    group_interval: 30m
+    repeat_interval: 24h
+
+receivers:
+  - name: pagerduty-backend
+    pagerduty_configs:
+      - service_key: '<PAGERDUTY_SERVICE_KEY>'
+        description: "{{ .GroupLabels.alertname }}: {{ .CommonAnnotations.summary }}"
+
+  - name: pagerduty-database-oncall
+    pagerduty_configs:
+      - service_key: '<PAGERDUTY_DATABASE_KEY>'
+        description: "DB Alert: {{ .CommonAnnotations.summary }}"
+
+  - name: slack-backend-alerts
+    slack_configs:
+      - channel: '#backend-alerts'
+        username: 'Grafana Alerts'
+        title: '{{ .GroupLabels.alertname }}'
+        text: '{{ .CommonAnnotations.description }}'
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+
+  - name: slack-backend-monitoring
+    slack_configs:
+      - channel: '#backend-monitoring'
+        username: 'Grafana Info'
+        title: '{{ .GroupLabels.alertname }}'
+        text: '{{ .CommonAnnotations.description }}'
