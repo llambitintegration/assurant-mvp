@@ -27,7 +27,7 @@ export class TeamsService {
    * @returns Team member with role or null if not found
    */
   async getTeamMemberById(memberId: string) {
-    return await prisma.team_members.findFirst({
+    const result = await prisma.team_members.findFirst({
       where: {
         id: memberId,
         active: true // Only return active members
@@ -59,6 +59,24 @@ export class TeamsService {
         }
       }
     });
+
+    if (!result) {
+      return null;
+    }
+
+    // Flatten the structure to match SQL query output
+    const { role, user, job_titles, ...teamMember } = result;
+
+    return {
+      ...teamMember,
+      // Flatten role fields to root level (matching SQL JOIN pattern)
+      role_name: role?.name,
+      role_team_id: role?.team_id,
+      default_role: role?.default_role,
+      admin_role: role?.admin_role,
+      owner: role?.owner
+      // Note: user and job_titles are not included in the SQL query for this endpoint
+    };
   }
 
   /**
@@ -69,7 +87,7 @@ export class TeamsService {
    * @returns Array of team members with roles
    */
   async getTeamMembersList(teamId: string) {
-    return await prisma.team_members.findMany({
+    const results = await prisma.team_members.findMany({
       where: {
         team_id: teamId,
         active: true // Only return active members
@@ -103,6 +121,24 @@ export class TeamsService {
       orderBy: {
         created_at: 'asc' // Sort by creation date
       }
+    });
+
+    // Flatten the structure to match SQL query output
+    return results.map(result => {
+      const { role, user, job_titles, ...teamMember } = result;
+
+      return {
+        ...teamMember,
+        // Flatten role fields to root level (matching SQL JOIN pattern)
+        role_name: role?.name,
+        role_team_id: role?.team_id,
+        default_role: role?.default_role,
+        admin_role: role?.admin_role,
+        owner: role?.owner,
+        // Flatten user fields to root level (matching LEFT JOIN pattern)
+        user_email: user?.email,
+        user_name: user?.name
+      };
     });
   }
 

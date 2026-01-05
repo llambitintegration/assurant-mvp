@@ -20,6 +20,7 @@ jest.unmock('../../services/auth/auth-service');
 jest.unmock('../../services/teams/teams-service');
 
 import { PrismaClient } from '@prisma/client';
+import db from '../../config/db';
 
 // Singleton Prisma client for contract tests
 let prisma: PrismaClient | null = null;
@@ -56,10 +57,35 @@ export async function setupContractTests(): Promise<PrismaClient> {
  */
 export async function teardownContractTests(): Promise<void> {
   if (prisma) {
-    await prisma.$disconnect();
-    prisma = null;
-    console.log('[CONTRACT TEST TEARDOWN] Database connection closed');
+    try {
+      // Force disconnect all connections
+      await prisma.$disconnect();
+      prisma = null;
+      console.log('[CONTRACT TEST TEARDOWN] Database connection closed');
+    } catch (error) {
+      console.error('[CONTRACT TEST TEARDOWN] Error during disconnect:', error);
+      prisma = null;
+    }
   }
+}
+
+/**
+ * Global teardown - called at the end of the test suite
+ */
+export async function globalTeardown(): Promise<void> {
+  // Disconnect Prisma
+  await teardownContractTests();
+
+  // Close PostgreSQL pool
+  try {
+    await db.pool.end();
+    console.log('[CONTRACT TEST TEARDOWN] PostgreSQL pool closed');
+  } catch (error) {
+    console.error('[CONTRACT TEST TEARDOWN] Error closing pool:', error);
+  }
+
+  // Give time for any pending operations to complete
+  await new Promise(resolve => setTimeout(resolve, 100));
 }
 
 /**

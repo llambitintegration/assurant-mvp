@@ -131,8 +131,8 @@ describe('Shadow Mode: Teams Service', () => {
       expect(result.matched).toBe(true);
       expect(result.differences.length).toBe(0);
 
-      // Verify role information included
-      expect(result.shadowResult).toHaveProperty('role');
+      // Verify role information included (flattened fields)
+      expect(result.shadowResult).toHaveProperty('role_name');
     });
 
     it('should track JOIN query performance', async () => {

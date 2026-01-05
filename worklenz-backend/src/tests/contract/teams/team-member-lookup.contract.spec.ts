@@ -212,15 +212,12 @@ describe('Contract Test: Team Member Lookup', () => {
   it('should include role information in response', async () => {
     const result = await teamsService.getTeamMemberById(testMember.id);
 
-    // Verify role information is included
+    // Verify role information is included (flattened fields matching SQL JOIN output)
     expect(result).toBeTruthy();
-    expect(result).toHaveProperty('role');
-    if (result && 'role' in result) {
-      expect(result.role).toHaveProperty('id');
-      expect(result.role).toHaveProperty('name');
-      expect(result.role).toHaveProperty('default_role');
-      expect(result.role).toHaveProperty('admin_role');
-      expect(result.role).toHaveProperty('owner');
-    }
+    expect(result).toHaveProperty('role_name');
+    expect(result).toHaveProperty('role_team_id');
+    expect(result).toHaveProperty('default_role');
+    expect(result).toHaveProperty('admin_role');
+    expect(result).toHaveProperty('owner');
   });
 });

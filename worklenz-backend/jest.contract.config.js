@@ -60,5 +60,11 @@ module.exports = {
   testTimeout: 30000,
 
   // Setup files for contract tests
-  setupFilesAfterEnv: ['<rootDir>/src/tests/contract/setup.ts']
+  setupFilesAfterEnv: ['<rootDir>/src/tests/contract/setup.ts'],
+
+  // Global teardown to close all connections
+  globalTeardown: '<rootDir>/src/tests/contract/global-teardown.js',
+
+  // Force exit after tests complete (acceptable for contract tests with external DB connections)
+  forceExit: true
 };

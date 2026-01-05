@@ -251,4 +251,105 @@ export class AuthService {
 
     return count > 0;
   }
+
+  /**
+   * Get user by Google ID or email (for Google OAuth)
+   * Replaces: auth-controller.ts:315-318 SQL pattern
+   *
+   * @param googleId - Google OAuth ID
+   * @param email - Email address
+   * @returns User object or null
+   */
+  async getUserByGoogleIdOrEmail(googleId: string, email: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    return await prisma.users.findFirst({
+      where: {
+        OR: [
+          { google_id: googleId },
+          {
+            email: {
+              equals: normalizedEmail,
+              mode: 'insensitive'
+            }
+          }
+        ],
+        is_deleted: false
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        google_id: true,
+        active_team: true,
+        avatar_url: true,
+        setup_completed: true,
+        timezone_id: true,
+        created_at: true,
+        updated_at: true,
+        last_active: true
+      }
+    });
+  }
+
+  /**
+   * Destroy other user sessions (for security - logout other devices)
+   * Replaces: auth-controller.ts:76-83 SQL pattern
+   *
+   * Note: This method uses raw SQL because pg_sessions is not in the Prisma schema
+   * and session management is handled by connect-pg-simple
+   *
+   * @param userId - User ID
+   * @param currentSessionId - Current session ID to keep
+   */
+  async destroyOtherSessions(userId: string, currentSessionId: string): Promise<void> {
+    try {
+      // This requires raw SQL as pg_sessions is managed externally
+      await prisma.$executeRaw`
+        DELETE FROM pg_sessions
+        WHERE (sess ->> 'passport')::JSON ->> 'user'::TEXT = ${userId}
+        AND sid != ${currentSessionId}
+      `;
+    } catch (error) {
+      // Log error but don't throw - session cleanup is not critical
+      console.error('[AuthService] Failed to destroy other sessions:', error);
+    }
+  }
+
+  /**
+   * Update user's last active timestamp
+   *
+   * @param userId - User ID
+   */
+  async updateLastActive(userId: string): Promise<void> {
+    await prisma.users.update({
+      where: { id: userId },
+      data: { last_active: new Date() }
+    });
+  }
+
+  /**
+   * Get user by ID (basic info only)
+   *
+   * @param userId - User ID
+   * @returns User object or null
+   */
+  async getUserById(userId: string) {
+    return await prisma.users.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        active_team: true,
+        avatar_url: true,
+        setup_completed: true,
+        timezone_id: true,
+        google_id: true,
+        created_at: true,
+        updated_at: true,
+        last_active: true
+      }
+    });
+  }
 }

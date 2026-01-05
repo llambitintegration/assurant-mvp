@@ -257,11 +257,11 @@ export async function expectParity<T>(
     prismaFn().catch(err => ({ error: err }))
   ]);
 
-  // Check for errors
-  if ('error' in (sqlResult as any)) {
+  // Check for errors - ensure results are not null/undefined before using 'in' operator
+  if (sqlResult !== null && sqlResult !== undefined && typeof sqlResult === 'object' && 'error' in sqlResult) {
     throw new Error(`SQL function threw error: ${(sqlResult as any).error.message}`);
   }
-  if ('error' in (prismaResult as any)) {
+  if (prismaResult !== null && prismaResult !== undefined && typeof prismaResult === 'object' && 'error' in prismaResult) {
     throw new Error(`Prisma function threw error: ${(prismaResult as any).error.message}`);
   }
 

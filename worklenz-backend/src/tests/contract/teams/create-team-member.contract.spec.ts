@@ -135,7 +135,8 @@ describe('Contract Test: Create Team Member', () => {
       expect(normalizedPrisma.role_id).toBe(normalizedSql.role_id);
       expect(normalizedPrisma.active).toBe(normalizedSql.active);
     } finally {
-      // Cleanup new user
+      // Cleanup in correct order: delete team_members first, then user
+      await db.query('DELETE FROM team_members WHERE user_id = $1', [newUserId]).catch(() => {});
       await db.query('DELETE FROM users WHERE id = $1', [newUserId]);
     }
   });
@@ -173,7 +174,8 @@ describe('Contract Test: Create Team Member', () => {
       );
       expect(checkResult.rows.length).toBe(0);
     } finally {
-      // Cleanup
+      // Cleanup in correct order: delete team_members first, then user
+      await db.query('DELETE FROM team_members WHERE user_id = $1', [newUserId]).catch(() => {});
       await db.query('DELETE FROM users WHERE id = $1', [newUserId]);
     }
   });
@@ -207,7 +209,8 @@ describe('Contract Test: Create Team Member', () => {
       expect(member.updated_at).toBeDefined();
       expect(member.id).toBeDefined();
     } finally {
-      // Cleanup
+      // Cleanup in correct order: delete team_members first, then user
+      await db.query('DELETE FROM team_members WHERE user_id = $1', [newUserId]).catch(() => {});
       await db.query('DELETE FROM users WHERE id = $1', [newUserId]);
     }
   });
@@ -252,7 +255,8 @@ describe('Contract Test: Create Team Member', () => {
         expect(error).toBeDefined();
       }
     } finally {
-      // Cleanup
+      // Cleanup in correct order: delete team_members first, then user
+      await db.query('DELETE FROM team_members WHERE user_id = $1', [newUserId]).catch(() => {});
       await db.query('DELETE FROM users WHERE id = $1', [newUserId]);
     }
   });

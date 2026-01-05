@@ -245,16 +245,15 @@ describe('Contract Test: Get Team Members List', () => {
 
     expect(members.length).toBeGreaterThan(0);
 
-    // Check each member has role information
+    // Check each member has role information (flattened fields matching SQL JOIN output)
     for (const member of members) {
-      expect(member).toHaveProperty('role');
-      if ('role' in member) {
-        expect(member.role).toHaveProperty('id');
-        expect(member.role).toHaveProperty('name');
-        expect(member.role).toHaveProperty('default_role');
-        expect(member.role).toHaveProperty('admin_role');
-        expect(member.role).toHaveProperty('owner');
-      }
+      expect(member).toHaveProperty('role_name');
+      expect(member).toHaveProperty('role_team_id');
+      expect(member).toHaveProperty('default_role');
+      expect(member).toHaveProperty('admin_role');
+      expect(member).toHaveProperty('owner');
+      expect(member).toHaveProperty('user_email');
+      expect(member).toHaveProperty('user_name');
     }
   });
 
