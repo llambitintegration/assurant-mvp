@@ -12,7 +12,6 @@
 
 import { expect, describe, it, beforeAll, afterAll, afterEach } from '@jest/globals';
 import db from '../../../config/db';
-import prisma from '../../../config/prisma';
 import projectsService from '../../../services/projects/projects-service';
 import { expectParity } from '../../utils/contract-test';
 import { getTestTeam, getTestUser } from '../setup';
@@ -69,7 +68,7 @@ describe('Contract Tests: Projects CRUD Operations (Wave 1)', () => {
     };
 
     await expectParity(sqlQuery, prismaQuery, {
-      sortArrays: true
+      sortArraysBy: 'id'
     });
   });
 
@@ -124,7 +123,7 @@ describe('Contract Tests: Projects CRUD Operations (Wave 1)', () => {
     };
 
     // Both should return empty arrays for successful delete
-    const sqlResult = await sqlQuery();
+    await sqlQuery();
     const prismaResult = await prismaQuery();
 
     expect(prismaResult).toBeDefined();

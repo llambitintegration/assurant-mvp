@@ -767,7 +767,12 @@ export class ProjectsService {
       const result = await db.query(q, [projectId, teamId, userId]);
       const [data] = result.rows;
 
-      if (data && data.project_manager) {
+      // Return null for parity with Prisma if no project found
+      if (!data) {
+        return null;
+      }
+
+      if (data.project_manager) {
         const { getColor } = await import('../../shared/utils');
         data.project_manager.name = data.project_manager.project_manager_info.name;
         data.project_manager.email = data.project_manager.project_manager_info.email;
@@ -1710,7 +1715,7 @@ export class ProjectsService {
           project_id: projectId
         },
         include: {
-          team_member: {
+          team_members: {
             include: {
               user: {
                 select: {
@@ -1768,10 +1773,16 @@ export class ProjectsService {
           const doneTaskCount = await prisma.tasks_assignees.count({
             where: {
               project_member_id: pm.id,
-              tasks: {
-                ...baseTaskWhere,
-                task_status: {
-                  sys_task_status_category: {
+              tasks: archived ? {
+                task_statuses: {
+                  sys_task_status_categories: {
+                    is_done: true
+                  }
+                }
+              } : {
+                archived: false,
+                task_statuses: {
+                  sys_task_status_categories: {
                     is_done: true
                   }
                 }
@@ -1784,13 +1795,22 @@ export class ProjectsService {
           const overdueTaskCount = await prisma.tasks_assignees.count({
             where: {
               project_member_id: pm.id,
-              tasks: {
-                ...baseTaskWhere,
+              tasks: archived ? {
                 end_date: {
                   lt: new Date(new Date().setHours(0, 0, 0, 0)) // Current date at midnight
                 },
-                task_status: {
-                  sys_task_status_category: {
+                task_statuses: {
+                  sys_task_status_categories: {
+                    is_done: false
+                  }
+                }
+              } : {
+                archived: false,
+                end_date: {
+                  lt: new Date(new Date().setHours(0, 0, 0, 0)) // Current date at midnight
+                },
+                task_statuses: {
+                  sys_task_status_categories: {
                     is_done: false
                   }
                 }
@@ -1802,10 +1822,19 @@ export class ProjectsService {
           const pendingTaskCount = await prisma.tasks_assignees.count({
             where: {
               project_member_id: pm.id,
-              tasks: {
-                ...baseTaskWhere,
-                task_status: {
-                  sys_task_status_category: {
+              tasks: archived ? {
+                task_statuses: {
+                  sys_task_status_categories: {
+                    OR: [
+                      { is_doing: true },
+                      { is_todo: true }
+                    ]
+                  }
+                }
+              } : {
+                archived: false,
+                task_statuses: {
+                  sys_task_status_categories: {
                     OR: [
                       { is_doing: true },
                       { is_todo: true }
@@ -1836,9 +1865,9 @@ export class ProjectsService {
             overdue_task_count: String(overdueTaskCount),
             pending_task_count: String(pendingTaskCount),
             name: memberInfo[0]?.name || null,
-            avatar_url: pm.team_member.user?.avatar_url || null,
+            avatar_url: pm.team_members.user?.avatar_url || null,
             email: memberInfo[0]?.email || null,
-            job_title: pm.team_member.job_titles?.name || null,
+            job_title: pm.team_members.job_titles?.name || null,
             progress,
             contribution,
             tasks: [] // Original SQL adds empty tasks array in post-processing
@@ -2011,7 +2040,8 @@ export class ProjectsService {
                 (SELECT name
                  FROM team_member_info_view
                  WHERE user_id = project_folders.created_by
-                   AND team_member_info_view.team_id = project_folders.team_id) AS created_by
+                   AND team_member_info_view.team_id = project_folders.team_id
+                 LIMIT 1) AS created_by
          FROM project_folders
          WHERE team_id = $1
         `,
@@ -2117,7 +2147,7 @@ export class ProjectsService {
 
           // Add color_code (matching original controller logic)
           const { getColor } = await import('../../shared/utils');
-          const color_code = getColor(comment.created_by);
+          const color_code = getColor(userInfo?.name);
 
           return {
             id: comment.id,

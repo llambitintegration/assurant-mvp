@@ -85,8 +85,8 @@ export class ShadowMetrics {
       matches: 0,
       mismatches: 0,
       errors: 0,
-      primaryLatencies: [],
-      shadowLatencies: [],
+      primaryLatencies: [] as number[],
+      shadowLatencies: [] as number[],
       differenceHistogram: new Map()
     };
 
@@ -514,8 +514,8 @@ export function ShadowCompare(
   config: Partial<ShadowCompareConfig> = {}
 ) {
   return function (
-    target: any,
-    propertyKey: string,
+    _target: any,
+    _propertyKey: string,
     descriptor: PropertyDescriptor
   ) {
     const originalMethod = descriptor.value;

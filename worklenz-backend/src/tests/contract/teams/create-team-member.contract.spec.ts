@@ -7,9 +7,8 @@
  * TDD Phase: RED - This test captures SQL behavior and will fail until Prisma implementation is complete
  */
 
-import { expectParity, normalize } from '../../utils/contract-test';
+import { normalize } from '../../utils/contract-test';
 import db from '../../../config/db';
-import prisma from '../../../config/prisma';
 import { TeamsService } from '../../../services/teams/teams-service';
 import bcrypt from 'bcrypt';
 

@@ -213,6 +213,8 @@ Emergency rollback:
    * @param defaultValue - Default value if not set or undefined
    * @returns Boolean value
    */
+  private getBooleanEnv(key: string): boolean | undefined;
+  private getBooleanEnv(key: string, defaultValue: boolean): boolean;
   private getBooleanEnv(key: string, defaultValue?: boolean): boolean | undefined {
     const value = process.env[key];
 

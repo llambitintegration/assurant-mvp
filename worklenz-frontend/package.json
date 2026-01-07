@@ -45,7 +45,7 @@
     "i18next-browser-languagedetector": "^8.2.0",
     "i18next-http-backend": "^2.7.3",
     "i18next-localstorage-backend": "^4.2.0",
-    "jspdf": "^3.0.0",
+    "jspdf": "^4.0.0",
     "mixpanel-browser": "^2.56.0",
     "nanoid": "^5.1.5",
     "primereact": "^10.8.4",

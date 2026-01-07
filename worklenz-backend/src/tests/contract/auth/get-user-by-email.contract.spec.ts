@@ -9,7 +9,6 @@
 
 import { expectParity } from '../../utils/contract-test';
 import db from '../../../config/db';
-import prisma from '../../../config/prisma';
 import { AuthService } from '../../../services/auth/auth-service';
 import bcrypt from 'bcrypt';
 

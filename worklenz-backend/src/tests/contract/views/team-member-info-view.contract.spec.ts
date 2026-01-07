@@ -22,7 +22,6 @@
 
 import { expectParity } from '../../utils/contract-test';
 import db from '../../../config/db';
-import prisma from '../../../config/prisma';
 import { TeamMemberInfoService } from '../../../services/views/team-member-info.service';
 import bcrypt from 'bcrypt';
 
@@ -484,12 +483,10 @@ describe('Contract Test: Team Member Info View Service', () => {
       const members = await service.getTeamMemberInfo({ teamId: testTeam.id });
 
       // Check that members with names come before null names
-      let foundNonNull = false;
       let foundNull = false;
 
       for (const member of members) {
         if (member.name !== null) {
-          foundNonNull = true;
           // If we've already found a null, this is wrong order
           expect(foundNull).toBe(false);
         } else {

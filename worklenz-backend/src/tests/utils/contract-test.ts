@@ -122,7 +122,7 @@ export function normalize<T>(value: T, options: NormalizeOptions = {}): T {
 /**
  * Normalize timestamp to ISO string, handling various input formats
  */
-function normalizeTimestamp(value: any, tolerance: number): string {
+function normalizeTimestamp(value: any, tolerance: number): string | number | Date {
   let timestamp: moment.Moment;
 
   if (value instanceof Date) {
