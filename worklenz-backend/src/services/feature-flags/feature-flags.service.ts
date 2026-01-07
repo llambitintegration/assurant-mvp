@@ -1,81 +1,45 @@
 /**
- * Feature Flags Service for Prisma Migration
+ * Feature Flags Service
  *
- * Provides module-level feature flags to control SQL vs Prisma usage during migration.
- * Enables safe, incremental rollout with easy rollback.
+ * Manages feature flags for the Prisma migration process.
+ * Allows gradual rollout of Prisma implementations with instant rollback capability.
+ *
+ * Environment Variables:
+ * - USE_PRISMA_ALL: Master switch (overrides all module flags)
+ * - USE_PRISMA_<MODULE>: Individual module flags (auth, teams, projects, tasks, etc.)
+ * - SHADOW_MODE_ENABLED: Enable shadow comparison globally
+ * - SHADOW_COMPARE_<MODULE>: Enable shadow comparison for specific modules
+ * - SHADOW_MODE_SAMPLE_RATE: Percentage of requests to compare (0.0-1.0)
  */
 
-/**
- * Available modules for feature flagging
- */
-export enum PrismaModule {
-  AUTH = 'AUTH',
-  TEAMS = 'TEAMS',
-  PROJECTS = 'PROJECTS',
-  TASKS = 'TASKS',
-  RESOURCES = 'RESOURCES',
-  REPORTS = 'REPORTS',
-  NOTIFICATIONS = 'NOTIFICATIONS',
-  INVENTORY = 'INVENTORY',
-  TIME_TRACKING = 'TIME_TRACKING',
-  DASHBOARD = 'DASHBOARD',
-  ALL = 'ALL' // Master switch
+export type FeatureFlagModule =
+  | 'auth'
+  | 'teams'
+  | 'projects'
+  | 'tasks'
+  | 'resources'
+  | 'reports'
+  | 'notifications'
+  | 'inventory'
+  | 'time_tracking'
+  | 'dashboard';
+
+export type FeatureFlagContext = 'read' | 'write' | 'all';
+
+export interface ShadowModeConfig {
+  enabled: boolean;
+  sampleRate: number;
 }
 
-/**
- * Feature flag configuration
- */
-interface FeatureFlagConfig {
-  [PrismaModule.AUTH]: boolean;
-  [PrismaModule.TEAMS]: boolean;
-  [PrismaModule.PROJECTS]: boolean;
-  [PrismaModule.TASKS]: boolean;
-  [PrismaModule.RESOURCES]: boolean;
-  [PrismaModule.REPORTS]: boolean;
-  [PrismaModule.NOTIFICATIONS]: boolean;
-  [PrismaModule.INVENTORY]: boolean;
-  [PrismaModule.TIME_TRACKING]: boolean;
-  [PrismaModule.DASHBOARD]: boolean;
-  [PrismaModule.ALL]: boolean;
-}
-
-/**
- * Shadow mode configuration (for dual-execution comparison)
- */
-interface ShadowModeConfig {
-  [PrismaModule.AUTH]: boolean;
-  [PrismaModule.TEAMS]: boolean;
-  [PrismaModule.PROJECTS]: boolean;
-  [PrismaModule.TASKS]: boolean;
-  [PrismaModule.RESOURCES]: boolean;
-  [PrismaModule.REPORTS]: boolean;
-  [PrismaModule.NOTIFICATIONS]: boolean;
-  [PrismaModule.INVENTORY]: boolean;
-  [PrismaModule.TIME_TRACKING]: boolean;
-  [PrismaModule.DASHBOARD]: boolean;
-}
-
-/**
- * Feature Flags Service (Singleton)
- */
-class FeatureFlagsService {
+export class FeatureFlagsService {
   private static instance: FeatureFlagsService;
-  private flags: FeatureFlagConfig;
-  private shadowMode: ShadowModeConfig;
-  private shadowSampleRate: number;
-  private overrides: Map<string, boolean>;
 
-  private constructor() {
-    this.flags = this.loadFlags();
-    this.shadowMode = this.loadShadowMode();
-    this.shadowSampleRate = this.loadShadowSampleRate();
-    this.overrides = new Map();
-  }
+  private constructor() {}
 
   /**
    * Get singleton instance
    */
-  static getInstance(): FeatureFlagsService {
+  public static getInstance(): FeatureFlagsService {
     if (!FeatureFlagsService.instance) {
       FeatureFlagsService.instance = new FeatureFlagsService();
     }
@@ -83,320 +47,204 @@ class FeatureFlagsService {
   }
 
   /**
-   * Load feature flags from environment variables
+   * Check if Prisma is enabled for a given module
+   *
+   * @param module - The module to check (e.g., 'projects', 'auth')
+   * @param context - Optional context (read, write, all). Defaults to 'all'.
+   * @returns true if Prisma should be used for this module
+   *
+   * @example
+   * const usePrisma = FeatureFlagsService.getInstance().isEnabled('projects');
+   * const usePrismaRead = FeatureFlagsService.getInstance().isEnabled('projects', 'read');
    */
-  private loadFlags(): FeatureFlagConfig {
-    return {
-      [PrismaModule.AUTH]: this.parseBool(process.env.USE_PRISMA_AUTH, false),
-      [PrismaModule.TEAMS]: this.parseBool(process.env.USE_PRISMA_TEAMS, false),
-      [PrismaModule.PROJECTS]: this.parseBool(process.env.USE_PRISMA_PROJECTS, false),
-      [PrismaModule.TASKS]: this.parseBool(process.env.USE_PRISMA_TASKS, false),
-      [PrismaModule.RESOURCES]: this.parseBool(process.env.USE_PRISMA_RESOURCES, false),
-      [PrismaModule.REPORTS]: this.parseBool(process.env.USE_PRISMA_REPORTS, false),
-      [PrismaModule.NOTIFICATIONS]: this.parseBool(process.env.USE_PRISMA_NOTIFICATIONS, false),
-      [PrismaModule.INVENTORY]: this.parseBool(process.env.USE_PRISMA_INVENTORY, false),
-      [PrismaModule.TIME_TRACKING]: this.parseBool(process.env.USE_PRISMA_TIME_TRACKING, false),
-      [PrismaModule.DASHBOARD]: this.parseBool(process.env.USE_PRISMA_DASHBOARD, false),
-      [PrismaModule.ALL]: this.parseBool(process.env.USE_PRISMA_ALL, false)
-    };
-  }
-
-  /**
-   * Load shadow mode flags from environment variables
-   */
-  private loadShadowMode(): ShadowModeConfig {
-    return {
-      [PrismaModule.AUTH]: this.parseBool(process.env.SHADOW_COMPARE_AUTH, false),
-      [PrismaModule.TEAMS]: this.parseBool(process.env.SHADOW_COMPARE_TEAMS, false),
-      [PrismaModule.PROJECTS]: this.parseBool(process.env.SHADOW_COMPARE_PROJECTS, false),
-      [PrismaModule.TASKS]: this.parseBool(process.env.SHADOW_COMPARE_TASKS, false),
-      [PrismaModule.RESOURCES]: this.parseBool(process.env.SHADOW_COMPARE_RESOURCES, false),
-      [PrismaModule.REPORTS]: this.parseBool(process.env.SHADOW_COMPARE_REPORTS, false),
-      [PrismaModule.NOTIFICATIONS]: this.parseBool(process.env.SHADOW_COMPARE_NOTIFICATIONS, false),
-      [PrismaModule.INVENTORY]: this.parseBool(process.env.SHADOW_COMPARE_INVENTORY, false),
-      [PrismaModule.TIME_TRACKING]: this.parseBool(process.env.SHADOW_COMPARE_TIME_TRACKING, false),
-      [PrismaModule.DASHBOARD]: this.parseBool(process.env.SHADOW_COMPARE_DASHBOARD, false)
-    };
-  }
-
-  /**
-   * Load shadow mode sample rate from environment
-   */
-  private loadShadowSampleRate(): number {
-    const rate = parseFloat(process.env.SHADOW_MODE_SAMPLE_RATE || '0.01');
-    return Math.max(0, Math.min(1, rate)); // Clamp between 0 and 1
-  }
-
-  /**
-   * Parse boolean from environment variable
-   */
-  private parseBool(value: string | undefined, defaultValue: boolean): boolean {
-    if (value === undefined) return defaultValue;
-
-    const normalized = value.toLowerCase().trim();
-    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
-      return true;
-    }
-    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
-      return false;
-    }
-
-    return defaultValue;
-  }
-
-  /**
-   * Check if Prisma should be used for a specific module
-   */
-  shouldUsePrisma(module: PrismaModule): boolean {
-    // Check for override
-    const overrideKey = `${module}`;
-    if (this.overrides.has(overrideKey)) {
-      return this.overrides.get(overrideKey)!;
-    }
-
-    // Check master switch
-    if (this.flags[PrismaModule.ALL]) {
+  public isEnabled(module: FeatureFlagModule, context: FeatureFlagContext = 'all'): boolean {
+    // Master switch overrides everything
+    if (this.getBooleanEnv('USE_PRISMA_ALL', false)) {
       return true;
     }
 
     // Check module-specific flag
-    return this.flags[module] || false;
-  }
+    const moduleFlag = `USE_PRISMA_${module.toUpperCase()}`;
+    const moduleEnabled = this.getBooleanEnv(moduleFlag, false);
 
-  /**
-   * Check if shadow mode is enabled for a module
-   */
-  isShadowModeEnabled(module: PrismaModule): boolean {
-    return this.shadowMode[module] || false;
-  }
+    // If context is specified (read/write), check context-specific flag
+    if (context !== 'all') {
+      const contextFlag = `USE_PRISMA_${module.toUpperCase()}_${context.toUpperCase()}`;
+      const contextEnabled = this.getBooleanEnv(contextFlag);
 
-  /**
-   * Get shadow mode sample rate
-   */
-  getShadowSampleRate(): number {
-    return this.shadowSampleRate;
-  }
-
-  /**
-   * Set a runtime override for a module (useful for testing)
-   */
-  setOverride(module: PrismaModule, value: boolean): void {
-    this.overrides.set(`${module}`, value);
-  }
-
-  /**
-   * Clear a runtime override
-   */
-  clearOverride(module: PrismaModule): void {
-    this.overrides.delete(`${module}`);
-  }
-
-  /**
-   * Clear all runtime overrides
-   */
-  clearAllOverrides(): void {
-    this.overrides.clear();
-  }
-
-  /**
-   * Get all flags (for debugging/monitoring)
-   */
-  getAllFlags(): FeatureFlagConfig {
-    return { ...this.flags };
-  }
-
-  /**
-   * Get all shadow mode flags
-   */
-  getAllShadowFlags(): ShadowModeConfig {
-    return { ...this.shadowMode };
-  }
-
-  /**
-   * Reload flags from environment (useful after config changes)
-   */
-  reload(): void {
-    this.flags = this.loadFlags();
-    this.shadowMode = this.loadShadowMode();
-    this.shadowSampleRate = this.loadShadowSampleRate();
-  }
-
-  /**
-   * Get summary of current configuration
-   */
-  getSummary(): {
-    usePrisma: string[];
-    useSql: string[];
-    shadowMode: string[];
-    shadowSampleRate: number;
-  } {
-    const modules = Object.values(PrismaModule).filter(m => m !== PrismaModule.ALL);
-
-    const usePrisma: string[] = [];
-    const useSql: string[] = [];
-    const shadowMode: string[] = [];
-
-    for (const module of modules) {
-      if (this.shouldUsePrisma(module)) {
-        usePrisma.push(module);
-      } else {
-        useSql.push(module);
-      }
-
-      if (this.isShadowModeEnabled(module)) {
-        shadowMode.push(module);
+      // Context flag takes precedence if set
+      if (contextEnabled !== undefined) {
+        return contextEnabled;
       }
     }
 
+    return moduleEnabled;
+  }
+
+  /**
+   * Check if shadow mode is enabled for a given module
+   *
+   * Shadow mode runs both SQL and Prisma in parallel and compares results
+   * without affecting the primary response.
+   *
+   * @param module - The module to check
+   * @returns true if shadow comparison should be performed
+   */
+  public isShadowModeEnabled(module: FeatureFlagModule): boolean {
+    // Global shadow mode must be enabled
+    if (!this.getBooleanEnv('SHADOW_MODE_ENABLED', false)) {
+      return false;
+    }
+
+    // Check module-specific shadow compare flag
+    const shadowFlag = `SHADOW_COMPARE_${module.toUpperCase()}`;
+    return this.getBooleanEnv(shadowFlag, false);
+  }
+
+  /**
+   * Get shadow mode configuration for a module
+   *
+   * @param module - The module to check
+   * @returns Shadow mode configuration (enabled, sampleRate)
+   */
+  public getShadowModeConfig(module: FeatureFlagModule): ShadowModeConfig {
     return {
-      usePrisma,
-      useSql,
-      shadowMode,
-      shadowSampleRate: this.shadowSampleRate
+      enabled: this.isShadowModeEnabled(module),
+      sampleRate: this.getFloatEnv('SHADOW_MODE_SAMPLE_RATE', 0.01)
     };
   }
-}
 
-/**
- * Export singleton instance
- */
-export const featureFlags = FeatureFlagsService.getInstance();
+  /**
+   * Check if shadow comparison should run for this request
+   * Based on sample rate (e.g., 0.01 = 1% of requests)
+   *
+   * @param module - The module to check
+   * @returns true if this request should be shadow compared
+   */
+  public shouldRunShadowCompare(module: FeatureFlagModule): boolean {
+    const config = this.getShadowModeConfig(module);
 
-/**
- * Convenience function to check if Prisma should be used
- */
-export function shouldUsePrisma(module: PrismaModule): boolean {
-  return featureFlags.shouldUsePrisma(module);
-}
+    if (!config.enabled) {
+      return false;
+    }
 
-/**
- * Convenience function to check if shadow mode is enabled
- */
-export function isShadowModeEnabled(module: PrismaModule): boolean {
-  return featureFlags.isShadowModeEnabled(module);
-}
+    // Random sampling based on sample rate
+    return Math.random() < config.sampleRate;
+  }
 
-/**
- * Middleware for easy service-layer branching
- * Usage in services:
- *
- * async getUserById(id: string) {
- *   return usePrismaOr(
- *     PrismaModule.AUTH,
- *     () => this.getUserByIdPrisma(id),
- *     () => this.getUserByIdSQL(id)
- *   );
- * }
- */
-export async function usePrismaOr<T>(
-  module: PrismaModule,
-  prismaFn: () => Promise<T>,
-  sqlFn: () => Promise<T>
-): Promise<T> {
-  if (shouldUsePrisma(module)) {
-    return await prismaFn();
-  } else {
-    return await sqlFn();
+  /**
+   * Get all enabled modules
+   *
+   * @returns Array of modules that have Prisma enabled
+   */
+  public getEnabledModules(): FeatureFlagModule[] {
+    const modules: FeatureFlagModule[] = [
+      'auth',
+      'teams',
+      'projects',
+      'tasks',
+      'resources',
+      'reports',
+      'notifications',
+      'inventory',
+      'time_tracking',
+      'dashboard'
+    ];
+
+    return modules.filter(module => this.isEnabled(module));
+  }
+
+  /**
+   * Get rollback instructions for a module
+   *
+   * @param module - The module to get rollback instructions for
+   * @returns Rollback instructions
+   */
+  public getRollbackInstructions(module: FeatureFlagModule): string {
+    return `
+To rollback ${module} to SQL:
+1. Set USE_PRISMA_${module.toUpperCase()}=false in .env
+2. Restart the server: npm run dev
+3. Verify functionality with smoke tests
+4. Check logs for any errors
+
+Emergency rollback:
+- Set USE_PRISMA_ALL=false to disable all Prisma usage immediately
+`;
+  }
+
+  /**
+   * Get migration status summary
+   *
+   * @returns Object with migration status for all modules
+   */
+  public getMigrationStatus(): Record<string, { prisma: boolean; shadow: boolean }> {
+    const modules: FeatureFlagModule[] = [
+      'auth',
+      'teams',
+      'projects',
+      'tasks',
+      'resources',
+      'reports',
+      'notifications',
+      'inventory',
+      'time_tracking',
+      'dashboard'
+    ];
+
+    const status: Record<string, { prisma: boolean; shadow: boolean }> = {};
+
+    for (const module of modules) {
+      status[module] = {
+        prisma: this.isEnabled(module),
+        shadow: this.isShadowModeEnabled(module)
+      };
+    }
+
+    return status;
+  }
+
+  // ===== Private Helper Methods =====
+
+  /**
+   * Get boolean environment variable
+   *
+   * @param key - Environment variable key
+   * @param defaultValue - Default value if not set or undefined
+   * @returns Boolean value
+   */
+  private getBooleanEnv(key: string, defaultValue?: boolean): boolean | undefined {
+    const value = process.env[key];
+
+    if (value === undefined || value === '') {
+      return defaultValue;
+    }
+
+    return value.toLowerCase() === 'true' || value === '1';
+  }
+
+  /**
+   * Get float environment variable
+   *
+   * @param key - Environment variable key
+   * @param defaultValue - Default value if not set
+   * @returns Float value
+   */
+  private getFloatEnv(key: string, defaultValue: number): number {
+    const value = process.env[key];
+
+    if (value === undefined || value === '') {
+      return defaultValue;
+    }
+
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? defaultValue : parsed;
   }
 }
 
 /**
- * Synchronous version of usePrismaOr
+ * Convenience function to get feature flags instance
  */
-export function usePrismaOrSync<T>(
-  module: PrismaModule,
-  prismaFn: () => T,
-  sqlFn: () => T
-): T {
-  if (shouldUsePrisma(module)) {
-    return prismaFn();
-  } else {
-    return sqlFn();
-  }
-}
-
-/**
- * Helper to execute with shadow mode comparison
- * Usage:
- *
- * return withShadowCompare(
- *   'getUserById',
- *   PrismaModule.AUTH,
- *   () => this.getUserByIdPrisma(id),
- *   () => this.getUserByIdSQL(id)
- * );
- */
-export async function withShadowCompare<T>(
-  name: string,
-  module: PrismaModule,
-  prismaFn: () => Promise<T>,
-  sqlFn: () => Promise<T>
-): Promise<T> {
-  const usePrisma = shouldUsePrisma(module);
-  const shadowEnabled = isShadowModeEnabled(module);
-
-  if (!shadowEnabled) {
-    // No shadow mode, just use the selected implementation
-    return usePrisma ? await prismaFn() : await sqlFn();
-  }
-
-  // Shadow mode enabled - import shadow compare utility
-  const { shadowCompare } = await import('../tests/utils/shadow-compare');
-
-  if (usePrisma) {
-    // Prisma is primary, SQL is shadow
-    const result = await shadowCompare(
-      `${module}:${name}`,
-      prismaFn,
-      sqlFn,
-      {
-        enabled: true,
-        sampleRate: featureFlags.getShadowSampleRate()
-      }
-    );
-    return result.primaryResult;
-  } else {
-    // SQL is primary, Prisma is shadow
-    const result = await shadowCompare(
-      `${module}:${name}`,
-      sqlFn,
-      prismaFn,
-      {
-        enabled: true,
-        sampleRate: featureFlags.getShadowSampleRate()
-      }
-    );
-    return result.primaryResult;
-  }
-}
-
-/**
- * Decorator for class methods to automatically use feature flags
- * Usage:
- *
- * @UsePrismaOr(PrismaModule.AUTH, 'getUserByIdSQL')
- * async getUserByIdPrisma(id: string) { ... }
- */
-export function UsePrismaOr(module: PrismaModule, sqlMethodName: string) {
-  return function (
-    target: any,
-    propertyKey: string,
-    descriptor: PropertyDescriptor
-  ) {
-    const prismaMethod = descriptor.value;
-
-    descriptor.value = async function (...args: any[]) {
-      if (shouldUsePrisma(module)) {
-        return await prismaMethod.apply(this, args);
-      } else {
-        const sqlMethod = this[sqlMethodName];
-        if (!sqlMethod) {
-          throw new Error(`SQL method ${sqlMethodName} not found on ${target.constructor.name}`);
-        }
-        return await sqlMethod.apply(this, args);
-      }
-    };
-
-    return descriptor;
-  };
+export function getFeatureFlags(): FeatureFlagsService {
+  return FeatureFlagsService.getInstance();
 }

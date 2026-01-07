@@ -3,24 +3,10 @@
  * Unmocks database modules and provides test utilities
  */
 
-// Unmock database and Prisma modules to allow real connections
-jest.unmock('@prisma/client');
-jest.unmock('pg');
-jest.unmock('pg-pool');
-jest.unmock('../../config/db');
-jest.unmock('../../config/prisma');
-
-// Unmock test utilities
-jest.unmock('../utils/contract-test');
-jest.unmock('../utils/shadow-compare');
-jest.unmock('../utils/seed-test-database');
-
-// Unmock services
-jest.unmock('../../services/auth/auth-service');
-jest.unmock('../../services/teams/teams-service');
+// Note: With automock: false, we don't need jest.unmock() calls
+// Keeping them for clarity but they have no effect when automock is disabled
 
 import { PrismaClient } from '@prisma/client';
-import db from '../../config/db';
 
 // Singleton Prisma client for contract tests
 let prisma: PrismaClient | null = null;
@@ -76,8 +62,9 @@ export async function globalTeardown(): Promise<void> {
   // Disconnect Prisma
   await teardownContractTests();
 
-  // Close PostgreSQL pool
+  // Close PostgreSQL pool (lazy-loaded)
   try {
+    const db = getDb();
     await db.pool.end();
     console.log('[CONTRACT TEST TEARDOWN] PostgreSQL pool closed');
   } catch (error) {
@@ -159,4 +146,12 @@ export async function getTestUser(teamId: string): Promise<{ id: string; email: 
     id: teamMember.user.id,
     email: teamMember.user.email
   };
+}
+
+/**
+ * Get database connection (lazy-loaded)
+ */
+export function getDb() {
+  // Lazy-load db to avoid connection on module import
+  return require('../../config/db').default;
 }
