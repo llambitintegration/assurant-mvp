@@ -4,6 +4,8 @@ import db from "../config/db";
 import {ITaskMovedToDoneRecord} from "../interfaces/task-moved-to-done";
 import {sendTaskDone} from "../shared/email-notifications";
 import {getBaseUrl} from "../cron_jobs/helpers";
+import {teamMemberInfoService} from "../services/views/team-member-info.service";
+import {getFeatureFlags} from "../services/feature-flags/feature-flags.service";
 
 export default class DbTaskStatusChangeListener {
   private static connected = false;
@@ -53,6 +55,28 @@ export default class DbTaskStatusChangeListener {
   }
 
   private static async sendEmails(taskId: string) {
+    const featureFlags = getFeatureFlags();
+
+    let membersString: string | null = null;
+
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Use TeamMemberInfoService
+      const qAssignees = `SELECT team_member_id FROM tasks_assignees WHERE task_id = $1`;
+      const assigneesResult = await db.query(qAssignees, [taskId]);
+      const teamMemberIds = assigneesResult.rows.map(row => row.team_member_id);
+
+      if (teamMemberIds.length > 0) {
+        const memberNames: string[] = [];
+        for (const teamMemberId of teamMemberIds) {
+          const memberInfo = await teamMemberInfoService.getTeamMemberById(teamMemberId);
+          if (memberInfo && memberInfo.name) {
+            memberNames.push(memberInfo.name);
+          }
+        }
+        membersString = memberNames.filter((name, index, self) => self.indexOf(name) === index).join(', ');
+      }
+    }
+
     const q = `
       WITH subscribers AS (
         --
@@ -64,13 +88,13 @@ export default class DbTaskStatusChangeListener {
                (SELECT name
                 FROM teams
                 WHERE id = (SELECT team_id FROM team_members WHERE id = ts.team_member_id)) AS team_name,
-               (SELECT STRING_AGG(DISTINCT
+               ${featureFlags.isEnabled('teams') ? `$2::TEXT` : `(SELECT STRING_AGG(DISTINCT
                                   (SELECT name
                                    FROM team_member_info_view
                                    WHERE team_member_id = tasks_assignees.team_member_id),
                                   ', ')
                 FROM tasks_assignees
-                WHERE task_id = ts.task_id) AS members
+                WHERE task_id = ts.task_id)`} AS members
         FROM task_subscribers ts
                LEFT JOIN users u ON u.id = ts.user_id
                LEFT JOIN tasks t ON t.id = ts.task_id
@@ -89,7 +113,9 @@ export default class DbTaskStatusChangeListener {
       FROM subscribers;
     `;
 
-    const result = await db.query(q, [taskId]);
+    const result = featureFlags.isEnabled('teams')
+      ? await db.query(q, [taskId, membersString])
+      : await db.query(q, [taskId]);
 
     for (const data of result.rows) {
       const taskUrl = `${getBaseUrl()}/worklenz/projects/${data.project_id}?tab=tasks-list&task=${data.task_id}`;

@@ -7,6 +7,8 @@ import {SocketEvents} from "../events";
 
 import {getLoggedInUserIdFromSocket, log_error, notifyProjectUpdates} from "../util";
 import {logMemberAssignment} from "../../services/activity-logs/activity-logs.service";
+import {teamMemberInfoService} from "../../services/views/team-member-info.service";
+import {getFeatureFlags} from "../../services/feature-flags/feature-flags.service";
 
 export interface ITaskAssignee {
   team_member_id?: string;
@@ -98,29 +100,57 @@ export async function on_quick_assign_or_remove(_io: Server, socket: Socket, dat
 
 export async function assignMemberIfNot(taskId: string, userId: string, teamId: string, io: Server, socket: Socket) {
   try {
-    const q = `
-      SELECT
-        team_member_id,
-        (SELECT project_id FROM tasks WHERE id = $1) as project_id,
-        (SELECT parent_task_id FROM tasks WHERE id = $1) as parent_task_id
-      FROM team_member_info_view WHERE user_id = $2 AND team_id = $3
+    const featureFlags = getFeatureFlags();
+
+    let team_member_id: string | undefined;
+
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Use TeamMemberInfoService
+      const memberInfo = await teamMemberInfoService.getTeamMemberByTeamAndUser(teamId, userId);
+
+      if (!memberInfo) {
+        log_error(new Error(`No team member found for userId: ${userId}, teamId: ${teamId}`));
+        return;
+      }
+
+      team_member_id = memberInfo.team_member_id;
+    } else {
+      // LEGACY: Use direct SQL query
+      const q = `
+        SELECT team_member_id
+        FROM team_member_info_view WHERE user_id = $1 AND team_id = $2
+      `;
+
+      const result = await db.query(q, [userId, teamId]);
+      const [data] = result.rows;
+
+      if (!data) {
+        log_error(new Error(`No team member found for userId: ${userId}, teamId: ${teamId}`));
+        return;
+      }
+
+      team_member_id = data.team_member_id;
+    }
+
+    // Get project_id and parent_task_id (same for both paths)
+    const qTask = `
+      SELECT project_id, parent_task_id FROM tasks WHERE id = $1
     `;
+    const taskResult = await db.query(qTask, [taskId]);
+    const [taskData] = taskResult.rows;
 
-    const result = await db.query(q, [taskId, userId, teamId]);
-    const [data] = result.rows;
-
-    if (!data) {
-      log_error(new Error(`No team member found for userId: ${userId}, teamId: ${teamId}`));
+    if (!taskData) {
+      log_error(new Error(`No task found for taskId: ${taskId}`));
       return;
     }
 
     const body = {
-      team_member_id: data.team_member_id,
-      project_id: data.project_id,
+      team_member_id,
+      project_id: taskData.project_id,
       task_id: taskId,
       reporter_id: userId,
       mode: 0,
-      parent_task: data.parent_task_id
+      parent_task: taskData.parent_task_id
     };
 
     await on_quick_assign_or_remove(io, socket, JSON.stringify(body));

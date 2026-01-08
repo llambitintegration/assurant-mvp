@@ -9,6 +9,8 @@ import { ServerResponse } from "../../models/server-response";
 import { TASK_PRIORITY_COLOR_ALPHA, TASK_STATUS_COLOR_ALPHA, UNMAPPED } from "../../shared/constants";
 import { getColor } from "../../shared/utils";
 import WLTasksControllerBase, { GroupBy, IWLTaskGroup } from "./workload-gannt-base";
+import { teamMemberInfoService } from "../../services/views/team-member-info.service";
+import { getFeatureFlags } from "../../services/feature-flags/feature-flags.service";
 
 export class IWLTaskListGroup implements IWLTaskGroup {
   name: string;
@@ -182,13 +184,13 @@ export default class WorkloadGanntController extends WLTasksControllerBase {
 
   @HandleExceptions()
   public static async getMembers(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-
+    const featureFlags = getFeatureFlags();
 
     const q = `SELECT pm.id AS project_member_id,
-                      tmiv.team_member_id,
-                      tmiv.user_id,
-                      name AS name,
-                      avatar_url,
+                      ${featureFlags.isEnabled('teams') ? 'pm.team_member_id,' : 'tmiv.team_member_id,'}
+                      ${featureFlags.isEnabled('teams') ? '(SELECT user_id FROM team_members WHERE id = pm.team_member_id) AS user_id,' : 'tmiv.user_id,'}
+                      ${featureFlags.isEnabled('teams') ? 'NULL AS name,' : 'name AS name,'}
+                      ${featureFlags.isEnabled('teams') ? 'NULL AS avatar_url,' : 'avatar_url,'}
                       TRUE AS project_member,
 
                       (SELECT COALESCE(ROW_TO_JSON(rec), '{}'::JSON)
@@ -198,7 +200,7 @@ export default class WorkloadGanntController extends WLTasksControllerBase {
                                       INNER JOIN tasks_assignees ta ON tasks.id = ta.task_id
                             WHERE archived IS FALSE
                               AND project_id = $1
-                              AND ta.team_member_id = tmiv.team_member_id) rec) AS duration,
+                              AND ta.team_member_id = ${featureFlags.isEnabled('teams') ? 'pm.team_member_id' : 'tmiv.team_member_id'}) rec) AS duration,
 
                       (SELECT COALESCE(ROW_TO_JSON(rec), '{}'::JSON)
                       FROM (SELECT  MIN(twl.created_at - INTERVAL '1 second' * twl.time_spent) AS min_date,
@@ -206,7 +208,7 @@ export default class WorkloadGanntController extends WLTasksControllerBase {
                                   FROM task_work_log twl
                                           INNER JOIN tasks t ON twl.task_id = t.id AND t.archived IS FALSE
                                   WHERE t.project_id = $1
-                                    AND twl.user_id = tmiv.user_id) rec) AS logs_date_union,
+                                    AND twl.user_id = ${featureFlags.isEnabled('teams') ? '(SELECT user_id FROM team_members WHERE id = pm.team_member_id)' : 'tmiv.user_id'}) rec) AS logs_date_union,
 
                       (SELECT COALESCE(ARRAY_TO_JSON(ARRAY_AGG(ROW_TO_JSON(rec))), '[]'::JSON)
                       FROM (SELECT start_date,
@@ -215,30 +217,34 @@ export default class WorkloadGanntController extends WLTasksControllerBase {
                                       INNER JOIN tasks_assignees ta ON tasks.id = ta.task_id
                             WHERE archived IS FALSE
                               AND project_id = pm.project_id
-                              AND ta.team_member_id = tmiv.team_member_id
+                              AND ta.team_member_id = ${featureFlags.isEnabled('teams') ? 'pm.team_member_id' : 'tmiv.team_member_id'}
                             ORDER BY start_date ASC) rec) AS tasks
               FROM project_members pm
-                      INNER JOIN team_member_info_view tmiv ON pm.team_member_id = tmiv.team_member_id
+                      ${featureFlags.isEnabled('teams') ? '' : 'INNER JOIN team_member_info_view tmiv ON pm.team_member_id = tmiv.team_member_id'}
               WHERE project_id = $1
               ORDER BY (SELECT MIN(LEAST(start_date, end_date))
                         FROM tasks t
                                   INNER JOIN tasks_assignees ta ON t.id = ta.task_id
                         WHERE t.archived IS FALSE
                           AND t.project_id = $1
-                          AND ta.team_member_id = tmiv.team_member_id) ASC NULLS LAST`;
+                          AND ta.team_member_id = ${featureFlags.isEnabled('teams') ? 'pm.team_member_id' : 'tmiv.team_member_id'}) ASC NULLS LAST`;
 
     const result = await db.query(q, [req.params.id]);
 
     for (const member of result.rows) {
-      member.color_code = getColor(member.TaskName);
+      // Enrich member info with service if feature flag enabled
+      if (featureFlags.isEnabled('teams') && member.team_member_id) {
+        const memberInfo = await teamMemberInfoService.getTeamMemberById(member.team_member_id);
+        if (memberInfo) {
+          member.name = memberInfo.name;
+          member.avatar_url = memberInfo.avatar_url;
+          member.user_id = memberInfo.user_id;
+        }
+      }
+
+      member.color_code = getColor(member.name || member.TaskName);
 
       this.setMaxMinDate(member, req.query.timeZone as string);
-
-      // if (member.duration[0].min_date)
-      //   member.duration[0].min_date = momentTime.tz(member.duration[0].min_date, `${req.query.timeZone}`).format("YYYY-MM-DD");
-
-      // if (member.duration[0].max_date)
-      //   member.duration[0].max_date = momentTime.tz(member.duration[0].max_date, `${req.query.timeZone}`).format("YYYY-MM-DD");
 
       const fStartDate = member.duration.min_date ? moment(member.duration.min_date).format("YYYY-MM-DD") : moment().format("YYYY-MM-DD");
       const fEndDate = member.duration.max_date ? moment(member.duration.max_date).format("YYYY-MM-DD") : moment().format("YYYY-MM-DD");

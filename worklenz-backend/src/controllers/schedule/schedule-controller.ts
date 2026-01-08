@@ -9,6 +9,8 @@ import { getColor } from "../../shared/utils";
 import moment, { Moment } from "moment";
 import momentTime from "moment-timezone";
 import ScheduleTasksControllerBase, { GroupBy, IScheduleTaskGroup } from "./schedule-controller-base";
+import { teamMemberInfoService } from "../../services/views/team-member-info.service";
+import { getFeatureFlags } from "../../services/feature-flags/feature-flags.service";
 
 interface IDateUnions {
   date_union: {
@@ -398,6 +400,7 @@ AND p.id NOT IN (SELECT project_id FROM archived_projects)`;
 
   @HandleExceptions()
   public static async getProjects(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+    const featureFlags = getFeatureFlags();
     const userId = req.user?.id as string;
     const teamId = req.params.id as string;
     const timeZone = req.query.timeZone as string;
@@ -419,6 +422,15 @@ AND p.id NOT IN (SELECT project_id FROM archived_projects)`;
       project.color_code = getColor(project.name);
 
       for (const member of project.members) {
+        // Enrich member info with service if feature flag enabled
+        if (featureFlags.isEnabled('teams') && member.team_member_id) {
+          const memberInfo = await teamMemberInfoService.getTeamMemberById(member.team_member_id);
+          if (memberInfo) {
+            member.name = memberInfo.name;
+            member.avatar_url = memberInfo.avatar_url;
+            member.user_id = memberInfo.user_id;
+          }
+        }
 
         const mergedAllocation = await this.mergeAllocations(member.allocations);
 

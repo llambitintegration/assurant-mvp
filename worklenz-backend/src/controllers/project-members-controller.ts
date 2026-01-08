@@ -10,21 +10,31 @@ import TeamMembersController from "./team-members-controller";
 import {checkTeamSubscriptionStatus} from "../shared/paddle-utils";
 import {statusExclude, TRIAL_MEMBER_LIMIT} from "../shared/constants";
 import {NotificationsService} from "../services/notifications/notifications.service";
+import {teamMemberInfoService} from "../services/views/team-member-info.service";
+import {getFeatureFlags} from "../services/feature-flags/feature-flags.service";
 
 export default class ProjectMembersController extends WorklenzControllerBase {
 
   public static async checkIfUserAlreadyExists(owner_id: string, email: string) {
     if (!owner_id) throw new Error("Owner not found.");
 
-    const q = `SELECT EXISTS(SELECT tmi.team_member_id
-              FROM team_member_info_view AS tmi
-                       JOIN teams AS t ON tmi.team_id = t.id
-              WHERE tmi.email = $1::TEXT
-                AND t.user_id = $2::UUID);`;
-    const result = await db.query(q, [email, owner_id]);
+    const featureFlags = getFeatureFlags();
 
-    const [data] = result.rows;
-    return data.exists;
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Use TeamMemberInfoService
+      return await teamMemberInfoService.checkUserActiveInOwnerTeams(owner_id, email);
+    } else {
+      // LEGACY: Keep original SQL
+      const q = `SELECT EXISTS(SELECT tmi.team_member_id
+                FROM team_member_info_view AS tmi
+                         JOIN teams AS t ON tmi.team_id = t.id
+                WHERE tmi.email = $1::TEXT
+                  AND t.user_id = $2::UUID);`;
+      const result = await db.query(q, [email, owner_id]);
+
+      const [data] = result.rows;
+      return data.exists;
+    }
   }
 
   public static async createOrInviteMembers(body: any) {
@@ -174,25 +184,57 @@ export default class ProjectMembersController extends WorklenzControllerBase {
 
   @HandleExceptions()
   public static async get(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const q = `
-      SELECT project_members.id,
-             tm.id AS team_member_id,
-             (SELECT email FROM team_member_info_view WHERE team_member_info_view.team_member_id = tm.id),
-             (SELECT name FROM team_member_info_view WHERE team_member_id = project_members.team_member_id) AS name,
-             u.avatar_url,
-             jt.name AS job_title
-      FROM project_members
-             INNER JOIN team_members tm ON project_members.team_member_id = tm.id
-             LEFT JOIN job_titles jt ON tm.job_title_id = jt.id
-             LEFT JOIN users u ON tm.user_id = u.id
-      WHERE project_id = $1
-      ORDER BY project_members.created_at DESC;
-    `;
-    const result = await db.query(q, [req.params.id]);
+    const featureFlags = getFeatureFlags();
 
-    result.rows.forEach((a: any) => a.color_code = getColor(a.name));
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Use TeamMemberInfoService
+      const q = `
+        SELECT project_members.id,
+               tm.id AS team_member_id,
+               jt.name AS job_title
+        FROM project_members
+               INNER JOIN team_members tm ON project_members.team_member_id = tm.id
+               LEFT JOIN job_titles jt ON tm.job_title_id = jt.id
+        WHERE project_id = $1
+        ORDER BY project_members.created_at DESC;
+      `;
+      const result = await db.query(q, [req.params.id]);
 
-    return res.status(200).send(new ServerResponse(true, result.rows));
+      // Fetch team member info for each member
+      for (const row of result.rows) {
+        const memberInfo = await teamMemberInfoService.getTeamMemberById(row.team_member_id);
+        if (memberInfo) {
+          row.email = memberInfo.email;
+          row.name = memberInfo.name;
+          row.avatar_url = memberInfo.avatar_url;
+        }
+      }
+
+      result.rows.forEach((a: any) => a.color_code = getColor(a.name));
+
+      return res.status(200).send(new ServerResponse(true, result.rows));
+    } else {
+      // LEGACY: Keep original SQL
+      const q = `
+        SELECT project_members.id,
+               tm.id AS team_member_id,
+               (SELECT email FROM team_member_info_view WHERE team_member_info_view.team_member_id = tm.id),
+               (SELECT name FROM team_member_info_view WHERE team_member_id = project_members.team_member_id) AS name,
+               u.avatar_url,
+               jt.name AS job_title
+        FROM project_members
+               INNER JOIN team_members tm ON project_members.team_member_id = tm.id
+               LEFT JOIN job_titles jt ON tm.job_title_id = jt.id
+               LEFT JOIN users u ON tm.user_id = u.id
+        WHERE project_id = $1
+        ORDER BY project_members.created_at DESC;
+      `;
+      const result = await db.query(q, [req.params.id]);
+
+      result.rows.forEach((a: any) => a.color_code = getColor(a.name));
+
+      return res.status(200).send(new ServerResponse(true, result.rows));
+    }
   }
 
   public static async checkIfMemberExists(projectId: string, teamMemberId: string) {

@@ -9,6 +9,7 @@ import ReportingControllerBase from "./reporting-controller-base";
 import { DATE_RANGES } from "../../shared/constants";
 import Excel from "exceljs";
 import ChartJsImage from "chartjs-to-image";
+import {getFeatureFlags} from "../../services/feature-flags/feature-flags.service";
 
 enum IToggleOptions {
   'WORKING_DAYS' = 'WORKING_DAYS', 'MAN_DAYS' = 'MAN_DAYS'
@@ -394,6 +395,7 @@ export default class ReportingAllocationController extends ReportingControllerBa
   @HandleExceptions()
   public static async getMemberTimeSheets(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     const archived = req.query.archived === "true";
+    const featureFlags = getFeatureFlags();
 
     const teams = (req.body.teams || []) as string[]; // ids
     const teamIds = teams.map(id => `'${id}'`).join(",");
@@ -474,30 +476,64 @@ export default class ReportingAllocationController extends ReportingControllerBa
 
     const billableQuery = this.buildBillableQuery(billable);
 
-    const q = `
-        SELECT tmiv.email, tmiv.name, SUM(time_spent) AS logged_time
-            FROM team_member_info_view tmiv
-                    LEFT JOIN task_work_log ON task_work_log.user_id = tmiv.user_id
-                    LEFT JOIN tasks ON tasks.id = task_work_log.task_id ${billableQuery}
-                    LEFT JOIN projects p ON p.id = tasks.project_id AND p.team_id = tmiv.team_id
-            WHERE p.id IN (${projectIds})
-            ${durationClause} ${archivedClause}
-            GROUP BY tmiv.email, tmiv.name
-            ORDER BY logged_time DESC;`;
-    const result = await db.query(q, []);
+    // NOTE: This query uses team_member_info_view for reporting/aggregation purposes.
+    // For Wave 2, we keep this as-is since it's a complex reporting query with JOINs and aggregations.
+    // The view JOIN is used for efficient aggregation across time logs and projects.
+    // This will be optimized in Wave 3 with batch operations if needed.
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Add active filter for Prisma-managed teams
+      const q = `
+          SELECT tmiv.email, tmiv.name, SUM(time_spent) AS logged_time
+              FROM team_member_info_view tmiv
+                      LEFT JOIN task_work_log ON task_work_log.user_id = tmiv.user_id
+                      LEFT JOIN tasks ON tasks.id = task_work_log.task_id ${billableQuery}
+                      LEFT JOIN projects p ON p.id = tasks.project_id AND p.team_id = tmiv.team_id
+              WHERE p.id IN (${projectIds})
+              AND tmiv.active = true
+              ${durationClause} ${archivedClause}
+              GROUP BY tmiv.email, tmiv.name
+              ORDER BY logged_time DESC;`;
+      const result = await db.query(q, []);
 
-    for (const member of result.rows) {
-      member.value = member.logged_time ? parseFloat(moment.duration(member.logged_time, "seconds").asHours().toFixed(2)) : 0;
-      member.color_code = getColor(member.name);
-      member.total_working_hours = totalWorkingHours;
-      member.utilization_percent = (totalWorkingHours > 0 && member.logged_time) ? ((parseFloat(member.logged_time) / (totalWorkingHours * 3600)) * 100).toFixed(2) : '0.00';
-      member.utilized_hours = member.logged_time ? (parseFloat(member.logged_time) / 3600).toFixed(2) : '0.00';
-      // Over/under utilized hours: utilized_hours - total_working_hours
-      const overUnder = member.utilized_hours && member.total_working_hours ? (parseFloat(member.utilized_hours) - member.total_working_hours) : 0;
-      member.over_under_utilized_hours = overUnder.toFixed(2);
+      for (const member of result.rows) {
+        member.value = member.logged_time ? parseFloat(moment.duration(member.logged_time, "seconds").asHours().toFixed(2)) : 0;
+        member.color_code = getColor(member.name);
+        member.total_working_hours = totalWorkingHours;
+        member.utilization_percent = (totalWorkingHours > 0 && member.logged_time) ? ((parseFloat(member.logged_time) / (totalWorkingHours * 3600)) * 100).toFixed(2) : '0.00';
+        member.utilized_hours = member.logged_time ? (parseFloat(member.logged_time) / 3600).toFixed(2) : '0.00';
+        // Over/under utilized hours: utilized_hours - total_working_hours
+        const overUnder = member.utilized_hours && member.total_working_hours ? (parseFloat(member.utilized_hours) - member.total_working_hours) : 0;
+        member.over_under_utilized_hours = overUnder.toFixed(2);
+      }
+
+      return res.status(200).send(new ServerResponse(true, result.rows));
+    } else {
+      // LEGACY: Keep original SQL
+      const q = `
+          SELECT tmiv.email, tmiv.name, SUM(time_spent) AS logged_time
+              FROM team_member_info_view tmiv
+                      LEFT JOIN task_work_log ON task_work_log.user_id = tmiv.user_id
+                      LEFT JOIN tasks ON tasks.id = task_work_log.task_id ${billableQuery}
+                      LEFT JOIN projects p ON p.id = tasks.project_id AND p.team_id = tmiv.team_id
+              WHERE p.id IN (${projectIds})
+              ${durationClause} ${archivedClause}
+              GROUP BY tmiv.email, tmiv.name
+              ORDER BY logged_time DESC;`;
+      const result = await db.query(q, []);
+
+      for (const member of result.rows) {
+        member.value = member.logged_time ? parseFloat(moment.duration(member.logged_time, "seconds").asHours().toFixed(2)) : 0;
+        member.color_code = getColor(member.name);
+        member.total_working_hours = totalWorkingHours;
+        member.utilization_percent = (totalWorkingHours > 0 && member.logged_time) ? ((parseFloat(member.logged_time) / (totalWorkingHours * 3600)) * 100).toFixed(2) : '0.00';
+        member.utilized_hours = member.logged_time ? (parseFloat(member.logged_time) / 3600).toFixed(2) : '0.00';
+        // Over/under utilized hours: utilized_hours - total_working_hours
+        const overUnder = member.utilized_hours && member.total_working_hours ? (parseFloat(member.utilized_hours) - member.total_working_hours) : 0;
+        member.over_under_utilized_hours = overUnder.toFixed(2);
+      }
+
+      return res.status(200).send(new ServerResponse(true, result.rows));
     }
-
-    return res.status(200).send(new ServerResponse(true, result.rows));
   }
 
   @HandleExceptions()

@@ -353,4 +353,183 @@ describe('Shadow Mode: Auth Service', () => {
       console.log(JSON.stringify(allSummaries, null, 2));
     });
   });
+
+  describe('Feature Flag Integration', () => {
+    it('should test changePassword with feature flag', async () => {
+      // Create a test user for password change
+      const testEmail = `feature-flag-${Date.now()}@example.com`;
+      const testPassword = 'OriginalPassword123!';
+      const newPassword = 'NewPassword456!';
+      const salt = bcrypt.genSaltSync(10);
+      const hashedPassword = bcrypt.hashSync(testPassword, salt);
+
+      const timezoneResult = await db.query('SELECT id FROM timezones LIMIT 1');
+      const timezoneId = timezoneResult.rows[0]?.id;
+
+      const createResult = await db.query(
+        `INSERT INTO users (email, name, password, timezone_id)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id`,
+        [testEmail, 'Feature Flag Test User', hashedPassword, timezoneId]
+      );
+
+      const userId = createResult.rows[0].id;
+
+      try {
+        const result = await shadowCompare(
+          'auth.changePassword',
+          // SQL function
+          async () => {
+            const q = `SELECT id, email, google_id, password FROM users WHERE id = $1;`;
+            const sqlResult = await db.query(q, [userId]);
+            const [data] = sqlResult.rows;
+
+            if (!data) return false;
+
+            if (bcrypt.compareSync(testPassword, data.password)) {
+              const changeSalt = bcrypt.genSaltSync(10);
+              const encryptedPassword = bcrypt.hashSync(newPassword, changeSalt);
+              await db.query(`UPDATE users SET password = $1 WHERE id = $2;`, [encryptedPassword, userId]);
+              return true;
+            }
+            return false;
+          },
+          // Prisma function
+          async () => {
+            // Reset password for Prisma test
+            await db.query(`UPDATE users SET password = $1 WHERE id = $2`, [hashedPassword, userId]);
+            return await authService.changePassword(userId, testPassword, newPassword);
+          },
+          {
+            enabled: true,
+            sampleRate: 1.0,
+            logMismatches: true,
+            normalizeOptions: {
+              treatNullAsUndefined: true
+            }
+          }
+        );
+
+        expect(result.matched).toBe(true);
+        expect(result.primaryResult).toBe(true);
+        expect(result.shadowResult).toBe(true);
+      } finally {
+        // Cleanup
+        await db.query('DELETE FROM users WHERE id = $1', [userId]);
+      }
+    });
+
+    it('should test resetPassword with feature flag', async () => {
+      const testEmail = `reset-flag-${Date.now()}@example.com`;
+      const testPassword = 'OriginalPassword123!';
+      const salt = bcrypt.genSaltSync(10);
+      const hashedPassword = bcrypt.hashSync(testPassword, salt);
+
+      const timezoneResult = await db.query('SELECT id FROM timezones LIMIT 1');
+      const timezoneId = timezoneResult.rows[0]?.id;
+
+      const createResult = await db.query(
+        `INSERT INTO users (email, name, password, timezone_id)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id`,
+        [testEmail, 'Reset Flag Test User', hashedPassword, timezoneId]
+      );
+
+      const userId = createResult.rows[0].id;
+
+      try {
+        const result = await shadowCompare(
+          'auth.getUserByEmail.resetFlow',
+          // SQL function - match full field set
+          async () => {
+            const q = `SELECT id, email, name, password, active_team, avatar_url, setup_completed,
+                              timezone_id, google_id, created_at, updated_at, last_active,
+                              temp_email, is_deleted, deleted_at
+                       FROM users
+                       WHERE LOWER(email) = $1 AND is_deleted IS FALSE`;
+            const sqlResult = await db.query(q, [testEmail.toLowerCase()]);
+            return sqlResult.rows[0] || null;
+          },
+          // Prisma function
+          async () => {
+            return await authService.getUserByEmail(testEmail);
+          },
+          {
+            enabled: true,
+            sampleRate: 1.0,
+            logMismatches: true,
+            piiFields: ['email', 'password', 'name'],
+            normalizeOptions: {
+              removeFields: ['user_no'],
+              timestampTolerance: 1000,
+              treatNullAsUndefined: true
+            }
+          }
+        );
+
+        expect(result.matched).toBe(true);
+        expect(result.primaryResult).toBeTruthy();
+        expect(result.shadowResult).toBeTruthy();
+      } finally {
+        // Cleanup
+        await db.query('DELETE FROM users WHERE id = $1', [userId]);
+      }
+    });
+
+    it('should test Google OAuth checks with feature flag', async () => {
+      const testGoogleId = `google-flag-${Date.now()}`;
+      const testEmail = `google-flag-${Date.now()}@example.com`;
+
+      const timezoneResult = await db.query('SELECT id FROM timezones LIMIT 1');
+      const timezoneId = timezoneResult.rows[0]?.id;
+
+      const createResult = await db.query(
+        `INSERT INTO users (email, name, google_id, timezone_id)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id`,
+        [testEmail, 'Google Flag Test User', testGoogleId, timezoneId]
+      );
+
+      const userId = createResult.rows[0].id;
+
+      try {
+        const result = await shadowCompare(
+          'auth.getUserByGoogleIdOrEmail',
+          // SQL function
+          async () => {
+            const sqlResult = await db.query(
+              `SELECT id, email, name, google_id, active_team, avatar_url, setup_completed,
+                      timezone_id, created_at, updated_at, last_active
+               FROM users
+               WHERE google_id = $1 OR LOWER(email) = $2`,
+              [testGoogleId, testEmail.toLowerCase()]
+            );
+            return sqlResult.rows[0] || null;
+          },
+          // Prisma function
+          async () => {
+            return await authService.getUserByGoogleIdOrEmail(testGoogleId, testEmail);
+          },
+          {
+            enabled: true,
+            sampleRate: 1.0,
+            logMismatches: true,
+            piiFields: ['email', 'name'],
+            normalizeOptions: {
+              removeFields: ['user_no'],
+              timestampTolerance: 1000,
+              treatNullAsUndefined: true
+            }
+          }
+        );
+
+        expect(result.matched).toBe(true);
+        expect(result.primaryResult).toBeTruthy();
+        expect(result.shadowResult).toBeTruthy();
+      } finally {
+        // Cleanup
+        await db.query('DELETE FROM users WHERE id = $1', [userId]);
+      }
+    });
+  });
 });

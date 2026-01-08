@@ -9,6 +9,8 @@ import {getColor} from "../shared/utils";
 import { NotificationsService } from "../services/notifications/notifications.service";
 import { IO } from "../shared/io";
 import { SocketEvents } from "../socket.io/events";
+import {teamMemberInfoService} from "../services/views/team-member-info.service";
+import {getFeatureFlags} from "../services/feature-flags/feature-flags.service";
 
 interface IMention {
   id: string;
@@ -116,29 +118,66 @@ export default class ProjectCommentsController extends WorklenzControllerBase {
   }
 
   private static async getMembersList(projectId: string) {
-    const q = `
-            SELECT
-                tm.user_id AS id,
-                (SELECT name
-                FROM team_member_info_view
-                WHERE team_member_info_view.team_member_id = tm.id),
-                (SELECT email
-                FROM team_member_info_view
-                WHERE team_member_info_view.team_member_id = tm.id) AS email,
-                (SELECT socket_id FROM users WHERE users.id = tm.user_id) AS socket_id,
-                (SELECT email_notifications_enabled
-                  FROM notification_settings
-                  WHERE team_id = tm.team_id
-                    AND notification_settings.user_id = tm.user_id) AS email_notifications_enabled
-            FROM project_members
-                INNER JOIN team_members tm ON project_members.team_member_id = tm.id
-                LEFT JOIN users u ON tm.user_id = u.id
-            WHERE project_id = $1 AND tm.user_id IS NOT NULL
-            ORDER BY name
-    `;
-    const result = await db.query(q, [projectId]);
-    const members = result.rows;
-    return members;
+    const featureFlags = getFeatureFlags();
+
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Use TeamMemberInfoService
+      const q = `
+              SELECT
+                  tm.user_id AS id,
+                  tm.id AS team_member_id,
+                  (SELECT socket_id FROM users WHERE users.id = tm.user_id) AS socket_id,
+                  (SELECT email_notifications_enabled
+                    FROM notification_settings
+                    WHERE team_id = tm.team_id
+                      AND notification_settings.user_id = tm.user_id) AS email_notifications_enabled
+              FROM project_members
+                  INNER JOIN team_members tm ON project_members.team_member_id = tm.id
+                  LEFT JOIN users u ON tm.user_id = u.id
+              WHERE project_id = $1 AND tm.user_id IS NOT NULL
+      `;
+      const result = await db.query(q, [projectId]);
+      const members = result.rows;
+
+      // Enrich with team member info from service
+      for (const member of members) {
+        const memberInfo = await teamMemberInfoService.getTeamMemberById(member.team_member_id);
+        if (memberInfo) {
+          member.name = memberInfo.name;
+          member.email = memberInfo.email;
+        }
+      }
+
+      // Sort by name after enrichment
+      members.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+      return members;
+    } else {
+      // LEGACY: Keep original SQL
+      const q = `
+              SELECT
+                  tm.user_id AS id,
+                  (SELECT name
+                  FROM team_member_info_view
+                  WHERE team_member_info_view.team_member_id = tm.id),
+                  (SELECT email
+                  FROM team_member_info_view
+                  WHERE team_member_info_view.team_member_id = tm.id) AS email,
+                  (SELECT socket_id FROM users WHERE users.id = tm.user_id) AS socket_id,
+                  (SELECT email_notifications_enabled
+                    FROM notification_settings
+                    WHERE team_id = tm.team_id
+                      AND notification_settings.user_id = tm.user_id) AS email_notifications_enabled
+              FROM project_members
+                  INNER JOIN team_members tm ON project_members.team_member_id = tm.id
+                  LEFT JOIN users u ON tm.user_id = u.id
+              WHERE project_id = $1 AND tm.user_id IS NOT NULL
+              ORDER BY name
+      `;
+      const result = await db.query(q, [projectId]);
+      const members = result.rows;
+      return members;
+    }
   }
 
   @HandleExceptions()

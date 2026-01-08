@@ -38,6 +38,123 @@ export interface IUpdateProjectCategoryDto {
   team_id: string;
 }
 
+/**
+ * DTO for folder creation
+ * Wave 3 Phase 1
+ */
+export interface ICreateFolderDto {
+  name: string;
+  key: string;
+  team_id: string;
+  created_by: string;
+  color_code?: string;
+  parent_folder_id?: string;
+}
+
+/**
+ * DTO for folder update
+ * Wave 3 Phase 1
+ */
+export interface IUpdateFolderDto {
+  id: string;
+  name: string;
+  color_code: string;
+  team_id: string;
+}
+
+/**
+ * DTO for comment deletion
+ * Wave 3 Phase 1
+ */
+export interface IDeleteCommentDto {
+  comment_id: string;
+  project_id: string;
+  user_id: string;
+}
+
+/**
+ * DTO for creating project member
+ * Wave 3 Phase 2
+ */
+export interface ICreateProjectMemberDto {
+  project_id: string;
+  team_member_id: string;
+  project_access_level_id: string;
+  role_id: string;
+  user_id: string;
+  team_id: string;
+}
+
+/**
+ * DTO for removing project member
+ * Wave 3 Phase 2
+ */
+export interface IRemoveProjectMemberDto {
+  member_id: string;
+  user_id: string;
+  team_id: string;
+}
+
+/**
+ * DTO for inviting project member by email
+ * Wave 3 Phase 2
+ */
+export interface IInviteByEmailDto {
+  email: string;
+  project_id: string;
+  team_id: string;
+  role_id: string;
+  job_title_id: string;
+  access_level_id: string;
+  invited_by: string;
+  owner_id: string;
+}
+
+/**
+ * DTO for project creation
+ * Wave 3 Phase 3
+ */
+export interface ICreateProjectDto {
+  name: string;
+  key: string;
+  notes?: string;
+  color_code?: string;
+  user_id: string;
+  team_id: string;
+  client_name?: string;
+  status_id?: string;
+  health_id?: string;
+  start_date?: Date;
+  end_date?: Date;
+  folder_id?: string;
+  category_id?: string;
+  working_days?: number;
+  man_days?: number;
+  hours_per_day?: number;
+  project_created_log: string;
+}
+
+/**
+ * DTO for project update
+ * Wave 3 Phase 3
+ */
+export interface IUpdateProjectDto extends ICreateProjectDto {
+  id: string;
+  team_member_id?: string; // project manager
+}
+
+/**
+ * DTO for comment creation
+ * Wave 3 Phase 3
+ */
+export interface ICreateCommentDto {
+  project_id: string;
+  created_by: string;
+  content: string;
+  team_id: string;
+  mentions?: Array<{ user_id: string; index: number }>;
+}
+
 export class ProjectsService {
   private static instance: ProjectsService;
 
@@ -2540,6 +2657,387 @@ export class ProjectsService {
       const result = await db.query(q, [projectId]);
       return result.rows || [];
     }
+  }
+
+  // ==========================================
+  // WAVE 3: Write Operations
+  // ==========================================
+
+  // ---------- PHASE 1: Quick Wins (Folders, Comments) ----------
+
+  /**
+   * Create a new project folder
+   * Wave 3 Phase 1 - Pure Prisma
+   * Tier: 1 (Pure Prisma)
+   *
+   * @param data - Folder creation data
+   * @returns Created folder with id, name, key, color_code, created_at
+   */
+  async createFolder(data: ICreateFolderDto): Promise<any> {
+    return await prisma.project_folders.create({
+      data: {
+        name: data.name,
+        key: data.key,
+        team_id: data.team_id,
+        created_by: data.created_by,
+        color_code: data.color_code,
+        parent_folder_id: data.parent_folder_id || undefined
+      },
+      select: {
+        id: true,
+        name: true,
+        key: true,
+        color_code: true,
+        created_at: true
+      }
+    });
+  }
+
+  /**
+   * Update an existing project folder
+   * Wave 3 Phase 1 - Pure Prisma
+   * Tier: 1 (Pure Prisma)
+   *
+   * @param data - Folder update data
+   * @returns Array with update confirmation or empty array if not found
+   */
+  async updateFolder(data: IUpdateFolderDto): Promise<any[]> {
+    const result = await prisma.project_folders.updateMany({
+      where: {
+        id: data.id,
+        team_id: data.team_id
+      },
+      data: {
+        name: data.name,
+        color_code: data.color_code,
+        updated_at: new Date()
+      }
+    });
+
+    return result.count > 0 ? [{ updated: true }] : [];
+  }
+
+  /**
+   * Delete a project folder
+   * Wave 3 Phase 1 - Pure Prisma with validation
+   * Tier: 1 (Pure Prisma)
+   *
+   * Validation: Prevents deletion if folder contains projects
+   *
+   * @param folderId - Folder ID to delete
+   * @param teamId - Team ID for authorization
+   * @returns Array with delete confirmation or empty array if not found
+   */
+  async deleteFolder(folderId: string, teamId: string): Promise<any[]> {
+    // Check if folder contains projects
+    const projectsCount = await prisma.projects.count({
+      where: { folder_id: folderId }
+    });
+
+    if (projectsCount > 0) {
+      throw new Error('Cannot delete folder with projects');
+    }
+
+    const result = await prisma.project_folders.deleteMany({
+      where: {
+        id: folderId,
+        team_id: teamId
+      }
+    });
+
+    return result.count > 0 ? [{ deleted: true }] : [];
+  }
+
+  /**
+   * Delete a project comment
+   * Wave 3 Phase 1 - Pure Prisma with cascade
+   * Tier: 1 (Pure Prisma)
+   *
+   * Cascade: Deletes project_comment_mentions first
+   * Authorization: Only creator can delete their comment
+   *
+   * @param commentId - Comment ID to delete
+   * @param projectId - Project ID for context
+   * @param userId - User ID for authorization
+   * @returns Array with delete confirmation or empty array if unauthorized
+   */
+  async deleteComment(commentId: string, projectId: string, userId: string): Promise<any[]> {
+    // Verify ownership before delete
+    const comment = await prisma.project_comments.findFirst({
+      where: {
+        id: commentId,
+        project_id: projectId,
+        created_by: userId
+      }
+    });
+
+    if (!comment) {
+      return []; // Not found or unauthorized
+    }
+
+    // Delete mentions first (cascade) - using raw SQL because project_comment_mentions has @@ignore
+    await db.query(
+      'DELETE FROM project_comment_mentions WHERE comment_id = $1',
+      [commentId]
+    );
+
+    // Delete comment
+    await prisma.project_comments.delete({
+      where: { id: commentId }
+    });
+
+    return [{ deleted: true }];
+  }
+
+  // ---------- PHASE 2: Medium Complexity (Member Operations) ----------
+
+  /**
+   * Create a project member
+   * Wave 3 Phase 2 - Typed $queryRaw wrapper
+   * Tier: 2 (Stored Procedure Wrapper - migrate to Pure Prisma in Wave 4)
+   *
+   * Uses: create_project_member stored procedure (54 lines)
+   * Logic: Validates project, creates member, creates notification, logs activity
+   *
+   * @param data - Project member creation data
+   * @returns Created member info
+   */
+  async createProjectMember(data: ICreateProjectMemberDto): Promise<any> {
+    interface CreateProjectMemberResult {
+      id: string;
+      team_member_id: string;
+      project_access_level_id: string;
+    }
+
+    const result = await prisma.$queryRaw<CreateProjectMemberResult[]>`
+      SELECT create_project_member(${JSON.stringify(data)}::json)
+    `;
+
+    return result[0];
+  }
+
+  /**
+   * Remove a project member
+   * Wave 3 Phase 2 - Typed $queryRaw wrapper
+   * Tier: 2 (Stored Procedure Wrapper - migrate to Pure Prisma in Wave 4)
+   *
+   * Uses: remove_project_member stored procedure (41 lines)
+   * Logic: Deletes member, cascades task assignments, logs removal
+   *
+   * @param memberId - Project member ID to remove
+   * @param userId - User ID for authorization
+   * @param teamId - Team ID for authorization
+   * @returns Success confirmation
+   */
+  async removeProjectMember(memberId: string, userId: string, teamId: string): Promise<any> {
+    interface RemoveProjectMemberResult {
+      success: boolean;
+    }
+
+    const result = await prisma.$queryRaw<RemoveProjectMemberResult[]>`
+      SELECT remove_project_member(
+        ${memberId}::uuid,
+        ${userId}::uuid,
+        ${teamId}::uuid
+      )
+    `;
+
+    return result[0];
+  }
+
+  /**
+   * Invite a project member by email
+   * Wave 3 Phase 2 - Pure Prisma transaction
+   * Tier: 1 (Pure Prisma)
+   *
+   * Logic: Creates team member placeholder, email invitation, project member, and notification
+   *
+   * @param data - Email invitation data
+   * @returns Invitation info with id, email, team_member_id
+   */
+  async inviteProjectMemberByEmail(data: IInviteByEmailDto): Promise<any> {
+    // Check if user already exists in team
+    const existingUser = await this.checkIfUserAlreadyExists(data.owner_id, data.email);
+
+    if (existingUser) {
+      throw new Error('User already exists in team');
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      // Create team member placeholder
+      const teamMember = await tx.team_members.create({
+        data: {
+          team_id: data.team_id,
+          role_id: data.role_id,
+          job_title_id: data.job_title_id
+        }
+      });
+
+      // Create email invitation
+      const invitation = await tx.email_invitations.create({
+        data: {
+          name: data.email.split('@')[0], // Use email prefix as name
+          email: data.email,
+          team_id: data.team_id,
+          team_member_id: teamMember.id
+        }
+      });
+
+      // Create project member
+      await tx.project_members.create({
+        data: {
+          project_id: data.project_id,
+          team_member_id: teamMember.id,
+          project_access_level_id: data.access_level_id,
+          role_id: data.role_id
+        }
+      });
+
+      // Create notification using user_notifications table (team_id is required)
+      await tx.user_notifications.create({
+        data: {
+          user_id: data.invited_by, // Inviter gets notified
+          team_id: data.team_id, // Required field
+          message: `Invited ${data.email} to project`,
+          project_id: data.project_id, // Optional but useful for context
+          created_at: new Date(),
+          updated_at: new Date()
+        }
+      });
+
+      return {
+        id: invitation.id,
+        email: data.email,
+        team_member_id: teamMember.id
+      };
+    });
+  }
+
+  // ---------- PHASE 3: Complex Operations (Projects, Comments) ----------
+
+  /**
+   * Create a new project
+   * Wave 3 Phase 3 - Typed $queryRaw wrapper
+   * Tier: 2 (Stored Procedure Wrapper - migrate to Pure Prisma in Wave 4)
+   *
+   * Uses: create_project stored procedure (80 lines, 4 tables)
+   * Logic: Validates uniqueness, creates/links client, inserts project, logs creation,
+   *        adds creator as ADMIN, creates 3 default task statuses, initializes task columns
+   *
+   * @param data - Project creation data
+   * @returns Created project with id and name
+   */
+  async createProject(data: ICreateProjectDto): Promise<any> {
+    interface CreateProjectResult {
+      id: string;
+      name: string;
+    }
+
+    const body = {
+      name: data.name,
+      key: data.key,
+      notes: data.notes,
+      color_code: data.color_code,
+      user_id: data.user_id,
+      team_id: data.team_id,
+      client_name: data.client_name,
+      status_id: data.status_id,
+      health_id: data.health_id,
+      start_date: data.start_date,
+      end_date: data.end_date,
+      folder_id: data.folder_id,
+      category_id: data.category_id,
+      working_days: data.working_days,
+      man_days: data.man_days,
+      hours_per_day: data.hours_per_day,
+      project_created_log: data.project_created_log
+    };
+
+    const result = await prisma.$queryRaw<CreateProjectResult[]>`
+      SELECT * FROM create_project(${JSON.stringify(body)}::json)
+    `;
+
+    return result[0];
+  }
+
+  /**
+   * Update an existing project
+   * Wave 3 Phase 3 - Typed $queryRaw wrapper
+   * Tier: 2 (Stored Procedure Wrapper - migrate to Pure Prisma in Wave 4)
+   *
+   * Uses: update_project stored procedure (75 lines, 4 tables)
+   * Logic: Validates uniqueness (excluding self), updates/creates client, updates project,
+   *        resets ALL members to 'MEMBER' access, updates project manager to 'PROJECT_MANAGER'
+   *
+   * @param data - Project update data
+   * @returns Updated project with id, name, project_manager_id
+   */
+  async updateProject(data: IUpdateProjectDto): Promise<any> {
+    interface UpdateProjectResult {
+      id: string;
+      name: string;
+      project_manager_id: string | null;
+    }
+
+    const body = {
+      id: data.id,
+      name: data.name,
+      notes: data.notes,
+      color_code: data.color_code,
+      user_id: data.user_id,
+      team_id: data.team_id,
+      team_member_id: data.team_member_id,
+      client_name: data.client_name,
+      status_id: data.status_id,
+      health_id: data.health_id,
+      key: data.key,
+      start_date: data.start_date,
+      end_date: data.end_date,
+      folder_id: data.folder_id,
+      category_id: data.category_id,
+      working_days: data.working_days,
+      man_days: data.man_days,
+      hours_per_day: data.hours_per_day
+    };
+
+    const result = await prisma.$queryRaw<UpdateProjectResult[]>`
+      SELECT * FROM update_project(${JSON.stringify(body)}::json)
+    `;
+
+    return result[0];
+  }
+
+  /**
+   * Create a project comment with mentions
+   * Wave 3 Phase 3 - Typed $queryRaw wrapper
+   * Tier: 2 (Stored Procedure Wrapper - migrate to Pure Prisma in Wave 4)
+   *
+   * Uses: create_project_comment stored procedure (50 lines)
+   * Logic: Creates comment, loops through mentions array, creates mention records,
+   *        creates notifications for each mentioned user
+   *
+   * @param data - Comment creation data with optional mentions array
+   * @returns Created comment with id, content, mentions array
+   */
+  async createComment(data: ICreateCommentDto): Promise<any> {
+    interface CreateCommentResult {
+      id: string;
+      content: string;
+      mentions: any[];
+    }
+
+    const body = {
+      project_id: data.project_id,
+      created_by: data.created_by,
+      content: data.content,
+      mentions: data.mentions || []
+    };
+
+    const result = await prisma.$queryRaw<CreateCommentResult[]>`
+      SELECT * FROM create_project_comment(${JSON.stringify(body)}::json)
+    `;
+
+    return result[0];
   }
 }
 

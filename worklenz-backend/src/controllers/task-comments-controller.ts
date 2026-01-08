@@ -13,6 +13,8 @@ import { ICommentEmailNotification } from "../interfaces/comment-email-notificat
 import { sendTaskComment } from "../shared/email-notifications";
 import { getRootDir, uploadBase64, getTaskAttachmentKey, createPresignedUrlWithClient } from "../shared/s3";
 import { getFreePlanSettings, getUsedStorage } from "../shared/paddle-utils";
+import {teamMemberInfoService} from "../services/views/team-member-info.service";
+import {getFeatureFlags} from "../services/feature-flags/feature-flags.service";
 
 interface ITaskAssignee {
   team_member_id: string;
@@ -383,84 +385,192 @@ export default class TaskCommentsController extends WorklenzControllerBase {
 
   private static async getTaskComments(taskId: string) {
     const url = `${getStorageUrl()}/${getRootDir()}`;
+    const featureFlags = getFeatureFlags();
 
-    const q = `SELECT task_comments.id,
-                    tc.text_content AS content,
-                    task_comments.user_id,
-                    task_comments.team_member_id,
-                    (SELECT name FROM team_member_info_view WHERE team_member_info_view.team_member_id = tm.id) AS member_name,
-                    u.avatar_url,
-                    task_comments.created_at,
-                    (SELECT COALESCE(JSON_AGG(rec), '[]'::JSON)
-                      FROM (SELECT tmiv.name AS user_name,
-                                  tmiv.email AS user_email
-                            FROM task_comment_mentions tcm
-                                    LEFT JOIN team_member_info_view tmiv ON tcm.informed_by = tmiv.team_member_id
-                            WHERE tcm.comment_id = task_comments.id) rec) AS mentions,
-                    (SELECT JSON_BUILD_OBJECT(
-                            'likes',
-                            JSON_BUILD_OBJECT(
-                                'count', (SELECT COUNT(*)
-                                          FROM task_comment_reactions tcr
-                                          WHERE tcr.comment_id = task_comments.id
-                                            AND reaction_type = 'like'),
-                                'liked_members', COALESCE(
-                                    (SELECT JSON_AGG(tmiv.name)
-                                      FROM task_comment_reactions tcr
-                                      JOIN team_member_info_view tmiv ON tcr.team_member_id = tmiv.team_member_id
-                                      WHERE tcr.comment_id = task_comments.id
-                                        AND tcr.reaction_type = 'like'),
-                                    '[]'::JSON
-                                ),
-                               'liked_member_ids', COALESCE(
-                                       (SELECT JSON_AGG(tmiv.team_member_id)
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Use TeamMemberInfoService for view data
+      const q = `SELECT task_comments.id,
+                      tc.text_content AS content,
+                      task_comments.user_id,
+                      task_comments.team_member_id,
+                      task_comments.created_at,
+                      (SELECT COALESCE(JSON_AGG(rec), '[]'::JSON)
+                        FROM (SELECT tcm.informed_by AS team_member_id
+                              FROM task_comment_mentions tcm
+                              WHERE tcm.comment_id = task_comments.id) rec) AS mention_team_member_ids,
+                      (SELECT JSON_BUILD_OBJECT(
+                              'likes',
+                              JSON_BUILD_OBJECT(
+                                  'count', (SELECT COUNT(*)
+                                            FROM task_comment_reactions tcr
+                                            WHERE tcr.comment_id = task_comments.id
+                                              AND reaction_type = 'like'),
+                                  'liked_members', COALESCE(
+                                      (SELECT JSON_AGG(tcr.team_member_id)
                                         FROM task_comment_reactions tcr
-                                                 JOIN team_member_info_view tmiv ON tcr.team_member_id = tmiv.team_member_id
                                         WHERE tcr.comment_id = task_comments.id
                                           AND tcr.reaction_type = 'like'),
-                                       '[]'::JSON
-                                                )
-                            )
-                        )) AS reactions,
-                    (SELECT COALESCE(JSON_AGG(rec), '[]'::JSON)
-                      FROM (SELECT id, created_at, name, size, type, (CONCAT('/', team_id, '/', project_id, '/', task_id, '/', comment_id, '/', id, '.', type)) AS url
-                            FROM task_comment_attachments tca
-                            WHERE tca.comment_id = task_comments.id) rec)                                        AS attachments
-              FROM task_comments
-                      LEFT JOIN task_comment_contents tc ON task_comments.id = tc.comment_id
-                      INNER JOIN team_members tm ON task_comments.team_member_id = tm.id
-                      LEFT JOIN users u ON tm.user_id = u.id
-              WHERE task_comments.task_id = $1
-              ORDER BY task_comments.created_at;`;
-    const result = await db.query(q, [taskId]); // task id
+                                      '[]'::JSON
+                                  ),
+                                 'liked_member_ids', COALESCE(
+                                         (SELECT JSON_AGG(tcr.team_member_id)
+                                          FROM task_comment_reactions tcr
+                                          WHERE tcr.comment_id = task_comments.id
+                                            AND tcr.reaction_type = 'like'),
+                                         '[]'::JSON
+                                                  )
+                              )
+                          )) AS reactions,
+                      (SELECT COALESCE(JSON_AGG(rec), '[]'::JSON)
+                        FROM (SELECT id, created_at, name, size, type, (CONCAT('/', team_id, '/', project_id, '/', task_id, '/', comment_id, '/', id, '.', type)) AS url
+                              FROM task_comment_attachments tca
+                              WHERE tca.comment_id = task_comments.id) rec)                                        AS attachments
+                FROM task_comments
+                        LEFT JOIN task_comment_contents tc ON task_comments.id = tc.comment_id
+                        INNER JOIN team_members tm ON task_comments.team_member_id = tm.id
+                        LEFT JOIN users u ON tm.user_id = u.id
+                WHERE task_comments.task_id = $1
+                ORDER BY task_comments.created_at;`;
+      const result = await db.query(q, [taskId]);
 
-    for (const comment of result.rows) {
-      if (!comment.content) comment.content = "";
-      comment.rawContent = await comment.content;
-      comment.content = await comment.content.replace(/\n/g, "</br>");
-      comment.edit = false;
-      const { mentions } = comment;
-      if (mentions.length > 0) {
-        const placeHolders = comment.content.match(/{\d+}/g);
-        if (placeHolders) {
-          placeHolders.forEach((placeHolder: { match: (arg0: RegExp) => string[]; }) => {
-            const index = parseInt(placeHolder.match(/\d+/)[0]);
-            if (index >= 0 && index < comment.mentions.length) {
-              comment.rawContent = comment.rawContent.replace(placeHolder, `@${comment.mentions[index].user_name}`);
-              comment.content = comment.content.replace(placeHolder, `<span class="mentions"> @${comment.mentions[index].user_name} </span>`);
+      // Enrich with team member info
+      for (const comment of result.rows) {
+        // Get commenter info
+        const memberInfo = await teamMemberInfoService.getTeamMemberById(comment.team_member_id);
+        comment.member_name = memberInfo?.name || '';
+        comment.avatar_url = memberInfo?.avatar_url || null;
+
+        // Get mention info
+        comment.mentions = [];
+        if (comment.mention_team_member_ids && comment.mention_team_member_ids.length > 0) {
+          for (const mentionData of comment.mention_team_member_ids) {
+            const mentionInfo = await teamMemberInfoService.getTeamMemberById(mentionData.team_member_id);
+            if (mentionInfo) {
+              comment.mentions.push({
+                user_name: mentionInfo.name,
+                user_email: mentionInfo.email
+              });
             }
-          });
+          }
+        }
+
+        // Get liked members names for reactions
+        if (comment.reactions?.likes?.liked_members) {
+          const likedMemberNames = [];
+          for (const memberId of comment.reactions.likes.liked_members) {
+            const memberInfo = await teamMemberInfoService.getTeamMemberById(memberId);
+            if (memberInfo) {
+              likedMemberNames.push(memberInfo.name);
+            }
+          }
+          comment.reactions.likes.liked_members = likedMemberNames;
+        }
+
+        if (!comment.content) comment.content = "";
+        comment.rawContent = await comment.content;
+        comment.content = await comment.content.replace(/\n/g, "</br>");
+        comment.edit = false;
+        const { mentions } = comment;
+        if (mentions.length > 0) {
+          const placeHolders = comment.content.match(/{\d+}/g);
+          if (placeHolders) {
+            placeHolders.forEach((placeHolder: { match: (arg0: RegExp) => string[]; }) => {
+              const index = parseInt(placeHolder.match(/\d+/)[0]);
+              if (index >= 0 && index < comment.mentions.length) {
+                comment.rawContent = comment.rawContent.replace(placeHolder, `@${comment.mentions[index].user_name}`);
+                comment.content = comment.content.replace(placeHolder, `<span class="mentions"> @${comment.mentions[index].user_name} </span>`);
+              }
+            });
+          }
+        }
+
+        for (const attachment of comment.attachments) {
+          attachment.size = humanFileSize(attachment.size);
+          attachment.url = url + attachment.url;
         }
       }
 
-      for (const attachment of comment.attachments) {
-        attachment.size = humanFileSize(attachment.size);
-        attachment.url = url + attachment.url;
+      return result;
+    } else {
+      // LEGACY: Keep original SQL
+      const q = `SELECT task_comments.id,
+                      tc.text_content AS content,
+                      task_comments.user_id,
+                      task_comments.team_member_id,
+                      (SELECT name FROM team_member_info_view WHERE team_member_info_view.team_member_id = tm.id) AS member_name,
+                      u.avatar_url,
+                      task_comments.created_at,
+                      (SELECT COALESCE(JSON_AGG(rec), '[]'::JSON)
+                        FROM (SELECT tmiv.name AS user_name,
+                                    tmiv.email AS user_email
+                              FROM task_comment_mentions tcm
+                                      LEFT JOIN team_member_info_view tmiv ON tcm.informed_by = tmiv.team_member_id
+                              WHERE tcm.comment_id = task_comments.id) rec) AS mentions,
+                      (SELECT JSON_BUILD_OBJECT(
+                              'likes',
+                              JSON_BUILD_OBJECT(
+                                  'count', (SELECT COUNT(*)
+                                            FROM task_comment_reactions tcr
+                                            WHERE tcr.comment_id = task_comments.id
+                                              AND reaction_type = 'like'),
+                                  'liked_members', COALESCE(
+                                      (SELECT JSON_AGG(tmiv.name)
+                                        FROM task_comment_reactions tcr
+                                        JOIN team_member_info_view tmiv ON tcr.team_member_id = tmiv.team_member_id
+                                        WHERE tcr.comment_id = task_comments.id
+                                          AND tcr.reaction_type = 'like'),
+                                      '[]'::JSON
+                                  ),
+                                 'liked_member_ids', COALESCE(
+                                         (SELECT JSON_AGG(tmiv.team_member_id)
+                                          FROM task_comment_reactions tcr
+                                                   JOIN team_member_info_view tmiv ON tcr.team_member_id = tmiv.team_member_id
+                                          WHERE tcr.comment_id = task_comments.id
+                                            AND tcr.reaction_type = 'like'),
+                                         '[]'::JSON
+                                                  )
+                              )
+                          )) AS reactions,
+                      (SELECT COALESCE(JSON_AGG(rec), '[]'::JSON)
+                        FROM (SELECT id, created_at, name, size, type, (CONCAT('/', team_id, '/', project_id, '/', task_id, '/', comment_id, '/', id, '.', type)) AS url
+                              FROM task_comment_attachments tca
+                              WHERE tca.comment_id = task_comments.id) rec)                                        AS attachments
+                FROM task_comments
+                        LEFT JOIN task_comment_contents tc ON task_comments.id = tc.comment_id
+                        INNER JOIN team_members tm ON task_comments.team_member_id = tm.id
+                        LEFT JOIN users u ON tm.user_id = u.id
+                WHERE task_comments.task_id = $1
+                ORDER BY task_comments.created_at;`;
+      const result = await db.query(q, [taskId]); // task id
+
+      for (const comment of result.rows) {
+        if (!comment.content) comment.content = "";
+        comment.rawContent = await comment.content;
+        comment.content = await comment.content.replace(/\n/g, "</br>");
+        comment.edit = false;
+        const { mentions } = comment;
+        if (mentions.length > 0) {
+          const placeHolders = comment.content.match(/{\d+}/g);
+          if (placeHolders) {
+            placeHolders.forEach((placeHolder: { match: (arg0: RegExp) => string[]; }) => {
+              const index = parseInt(placeHolder.match(/\d+/)[0]);
+              if (index >= 0 && index < comment.mentions.length) {
+                comment.rawContent = comment.rawContent.replace(placeHolder, `@${comment.mentions[index].user_name}`);
+                comment.content = comment.content.replace(placeHolder, `<span class="mentions"> @${comment.mentions[index].user_name} </span>`);
+              }
+            });
+          }
+        }
+
+        for (const attachment of comment.attachments) {
+          attachment.size = humanFileSize(attachment.size);
+          attachment.url = url + attachment.url;
+        }
+
       }
 
+      return result;
     }
-
-    return result;
   }
 
   @HandleExceptions()
@@ -498,20 +608,48 @@ export default class TaskCommentsController extends WorklenzControllerBase {
   private static async getTaskCommentData(commentId: string) {
     if (!commentId) return;
     try {
-      const q = `SELECT tc.user_id,
-                      t.project_id,
-                      t.name AS task_name,
-                      (SELECT team_id FROM projects p WHERE p.id = t.project_id) AS team_id,
-                      (SELECT name FROM teams te WHERE id = (SELECT team_id FROM projects p WHERE p.id = t.project_id)) AS team_name,
-                      (SELECT u.socket_id FROM users u WHERE u.id = tc.user_id) AS socket_id,
-                      (SELECT name FROM team_member_info_view tmiv WHERE tmiv.team_member_id = tcr.team_member_id) AS reactor_name
-                FROM task_comments tc
-                        LEFT JOIN tasks t ON t.id = tc.task_id
-                        LEFT JOIN task_comment_reactions tcr ON tc.id = tcr.comment_id
-                WHERE tc.id = $1;`;
-      const result = await db.query(q, [commentId]);
-      const [data] = result.rows;
-      return data;
+      const featureFlags = getFeatureFlags();
+
+      if (featureFlags.isEnabled('teams')) {
+        // NEW: Use TeamMemberInfoService
+        const q = `SELECT tc.user_id,
+                        t.project_id,
+                        t.name AS task_name,
+                        (SELECT team_id FROM projects p WHERE p.id = t.project_id) AS team_id,
+                        (SELECT name FROM teams te WHERE id = (SELECT team_id FROM projects p WHERE p.id = t.project_id)) AS team_name,
+                        (SELECT u.socket_id FROM users u WHERE u.id = tc.user_id) AS socket_id,
+                        tcr.team_member_id AS reactor_team_member_id
+                  FROM task_comments tc
+                          LEFT JOIN tasks t ON t.id = tc.task_id
+                          LEFT JOIN task_comment_reactions tcr ON tc.id = tcr.comment_id
+                  WHERE tc.id = $1;`;
+        const result = await db.query(q, [commentId]);
+        const [data] = result.rows;
+
+        // Get reactor name from service
+        if (data && data.reactor_team_member_id) {
+          const reactorInfo = await teamMemberInfoService.getTeamMemberById(data.reactor_team_member_id);
+          data.reactor_name = reactorInfo?.name || null;
+        }
+
+        return data;
+      } else {
+        // LEGACY: Keep original SQL
+        const q = `SELECT tc.user_id,
+                        t.project_id,
+                        t.name AS task_name,
+                        (SELECT team_id FROM projects p WHERE p.id = t.project_id) AS team_id,
+                        (SELECT name FROM teams te WHERE id = (SELECT team_id FROM projects p WHERE p.id = t.project_id)) AS team_name,
+                        (SELECT u.socket_id FROM users u WHERE u.id = tc.user_id) AS socket_id,
+                        (SELECT name FROM team_member_info_view tmiv WHERE tmiv.team_member_id = tcr.team_member_id) AS reactor_name
+                  FROM task_comments tc
+                          LEFT JOIN tasks t ON t.id = tc.task_id
+                          LEFT JOIN task_comment_reactions tcr ON tc.id = tcr.comment_id
+                  WHERE tc.id = $1;`;
+        const result = await db.query(q, [commentId]);
+        const [data] = result.rows;
+        return data;
+      }
     } catch (error) {
       log_error(error);
     }

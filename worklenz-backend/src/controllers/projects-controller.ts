@@ -13,6 +13,8 @@ import { IPassportSession } from "../interfaces/passport-session";
 import { SocketEvents } from "../socket.io/events";
 import { IO } from "../shared/io";
 import { getCurrentProjectsCount, getFreePlanSettings } from "../shared/paddle-utils";
+import { FeatureFlagsService } from "../services/feature-flags/feature-flags.service";
+import { ProjectsService } from "../services/projects/projects-service";
 
 export default class ProjectsController extends WorklenzControllerBase {
 
@@ -118,78 +120,101 @@ export default class ProjectsController extends WorklenzControllerBase {
 
   @HandleExceptions()
   public static async getMyProjects(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const {searchQuery, size, offset} = this.toPaginationOptions(req.query, "name");
+    const featureFlags = FeatureFlagsService.getInstance();
 
-    const isFavorites = req.query.filter === "1" ? ` AND EXISTS(SELECT user_id FROM favorite_projects WHERE user_id = '${req.user?.id}' AND project_id = projects.id)` : "";
+    if (featureFlags.isEnabled('projects', 'read')) {
+      // NEW: Prisma implementation
+      const projectsService = ProjectsService.getInstance();
+      const {searchQuery, size, offset} = this.toPaginationOptions(req.query, "name");
 
-    const isArchived = req.query.filter === "2"
-      ? ` AND EXISTS(SELECT user_id FROM archived_projects WHERE user_id = '${req.user?.id}' AND project_id = projects.id)`
-      : ` AND NOT EXISTS(SELECT user_id FROM archived_projects WHERE user_id = '${req.user?.id}' AND project_id = projects.id)`;
-    const q = `
-      SELECT ROW_TO_JSON(rec) AS projects
-      FROM (SELECT COUNT(*) AS total,
-                   (SELECT COALESCE(ARRAY_TO_JSON(ARRAY_AGG(ROW_TO_JSON(t))), '[]'::JSON)
-                    FROM (SELECT id,
-                                 name,
-                                 EXISTS(SELECT user_id
-                                        FROM favorite_projects
-                                        WHERE user_id = '${req.user?.id}'
-                                          AND project_id = projects.id) AS favorite,
-                                 EXISTS(SELECT user_id
-                                        FROM archived_projects
-                                        WHERE user_id = '${req.user?.id}'
-                                          AND project_id = projects.id) AS archived,
-                                 color_code,
-                                 (SELECT COUNT(*)
-                                  FROM tasks
-                                  WHERE archived IS FALSE
-                                    AND project_id = projects.id) AS all_tasks_count,
-                                 (SELECT COUNT(*)
-                                  FROM tasks
-                                  WHERE archived IS FALSE
-                                    AND project_id = projects.id
-                                    AND status_id IN (SELECT id
-                                                      FROM task_statuses
-                                                      WHERE project_id = projects.id
-                                                        AND category_id IN
-                                                            (SELECT id FROM sys_task_status_categories WHERE is_done IS TRUE))) AS completed_tasks_count,
-                                 (SELECT COUNT(*)
-                                  FROM project_members
-                                  WHERE project_id = projects.id) AS members_count,
-                                 (SELECT get_project_members(projects.id)) AS names,
-                                 (SELECT CASE
-                                           WHEN ((SELECT MAX(updated_at)
-                                                  FROM tasks
-                                                  WHERE archived IS FALSE
-                                                    AND project_id = projects.id) >
-                                                 updated_at)
-                                             THEN (SELECT MAX(updated_at)
-                                                   FROM tasks
-                                                   WHERE archived IS FALSE
-                                                     AND project_id = projects.id)
-                                           ELSE updated_at END) AS updated_at
-                          FROM projects
-                          WHERE team_id = $1 ${isArchived} ${isFavorites} ${searchQuery}
-                            AND is_member_of_project(projects.id
-                              , '${req.user?.id}'
-                              , $1)
-                          ORDER BY updated_at DESC
-                          LIMIT $2 OFFSET $3) t) AS data
-            FROM projects
-            WHERE team_id = $1 ${isArchived} ${isFavorites} ${searchQuery}
-              AND is_member_of_project(projects.id
-                , '${req.user?.id}'
-                , $1)) rec;
-    `;
-    const result = await db.query(q, [req.user?.team_id || null, size, offset]);
-    const [data] = result.rows;
-    const projects = Array.isArray(data?.projects.data) ? data?.projects.data : [];
-    for (const project of projects) {
-      project.progress = project.all_tasks_count > 0
-        ? ((project.completed_tasks_count / project.all_tasks_count) * 100).toFixed(0) : 0;
+      const result = await projectsService.getMyProjects(
+        req.user?.id as string,
+        req.user?.team_id as string,
+        {
+          filter: req.query.filter,
+          size: size,
+          offset: offset,
+          searchQuery: searchQuery,
+          search: req.query.search as string || ''
+        }
+      );
 
+      return res.status(200).send(new ServerResponse(true, result));
+    } else {
+      // OLD: SQL implementation (existing code as fallback)
+      const {searchQuery, size, offset} = this.toPaginationOptions(req.query, "name");
+
+      const isFavorites = req.query.filter === "1" ? ` AND EXISTS(SELECT user_id FROM favorite_projects WHERE user_id = '${req.user?.id}' AND project_id = projects.id)` : "";
+
+      const isArchived = req.query.filter === "2"
+        ? ` AND EXISTS(SELECT user_id FROM archived_projects WHERE user_id = '${req.user?.id}' AND project_id = projects.id)`
+        : ` AND NOT EXISTS(SELECT user_id FROM archived_projects WHERE user_id = '${req.user?.id}' AND project_id = projects.id)`;
+      const q = `
+        SELECT ROW_TO_JSON(rec) AS projects
+        FROM (SELECT COUNT(*) AS total,
+                     (SELECT COALESCE(ARRAY_TO_JSON(ARRAY_AGG(ROW_TO_JSON(t))), '[]'::JSON)
+                      FROM (SELECT id,
+                                   name,
+                                   EXISTS(SELECT user_id
+                                          FROM favorite_projects
+                                          WHERE user_id = '${req.user?.id}'
+                                            AND project_id = projects.id) AS favorite,
+                                   EXISTS(SELECT user_id
+                                          FROM archived_projects
+                                          WHERE user_id = '${req.user?.id}'
+                                            AND project_id = projects.id) AS archived,
+                                   color_code,
+                                   (SELECT COUNT(*)
+                                    FROM tasks
+                                    WHERE archived IS FALSE
+                                      AND project_id = projects.id) AS all_tasks_count,
+                                   (SELECT COUNT(*)
+                                    FROM tasks
+                                    WHERE archived IS FALSE
+                                      AND project_id = projects.id
+                                      AND status_id IN (SELECT id
+                                                        FROM task_statuses
+                                                        WHERE project_id = projects.id
+                                                          AND category_id IN
+                                                              (SELECT id FROM sys_task_status_categories WHERE is_done IS TRUE))) AS completed_tasks_count,
+                                   (SELECT COUNT(*)
+                                    FROM project_members
+                                    WHERE project_id = projects.id) AS members_count,
+                                   (SELECT get_project_members(projects.id)) AS names,
+                                   (SELECT CASE
+                                             WHEN ((SELECT MAX(updated_at)
+                                                    FROM tasks
+                                                    WHERE archived IS FALSE
+                                                      AND project_id = projects.id) >
+                                                   updated_at)
+                                               THEN (SELECT MAX(updated_at)
+                                                     FROM tasks
+                                                     WHERE archived IS FALSE
+                                                       AND project_id = projects.id)
+                                             ELSE updated_at END) AS updated_at
+                            FROM projects
+                            WHERE team_id = $1 ${isArchived} ${isFavorites} ${searchQuery}
+                              AND is_member_of_project(projects.id
+                                , '${req.user?.id}'
+                                , $1)
+                            ORDER BY updated_at DESC
+                            LIMIT $2 OFFSET $3) t) AS data
+              FROM projects
+              WHERE team_id = $1 ${isArchived} ${isFavorites} ${searchQuery}
+                AND is_member_of_project(projects.id
+                  , '${req.user?.id}'
+                  , $1)) rec;
+      `;
+      const result = await db.query(q, [req.user?.team_id || null, size, offset]);
+      const [data] = result.rows;
+      const projects = Array.isArray(data?.projects.data) ? data?.projects.data : [];
+      for (const project of projects) {
+        project.progress = project.all_tasks_count > 0
+          ? ((project.completed_tasks_count / project.all_tasks_count) * 100).toFixed(0) : 0;
+
+      }
+      return res.status(200).send(new ServerResponse(true, data?.projects || this.paginatedDatasetDefaultStruct));
     }
-    return res.status(200).send(new ServerResponse(true, data?.projects || this.paginatedDatasetDefaultStruct));
   }
 
   private static flatString(text: string) {
@@ -206,112 +231,139 @@ export default class ProjectsController extends WorklenzControllerBase {
 
   @HandleExceptions()
   public static async get(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const {searchQuery, sortField, sortOrder, size, offset} = this.toPaginationOptions(req.query, "name");
+    const featureFlags = FeatureFlagsService.getInstance();
 
-    const filterByMember = !req.user?.owner && !req.user?.is_admin ?
-      ` AND is_member_of_project(projects.id, '${req.user?.id}', $1) ` : "";
+    if (featureFlags.isEnabled('projects', 'read')) {
+      // NEW: Prisma implementation
+      const projectsService = ProjectsService.getInstance();
+      const {searchQuery, sortField, sortOrder, size, offset} = this.toPaginationOptions(req.query, "name");
 
-    const isFavorites = req.query.filter === "1" ? ` AND EXISTS(SELECT user_id FROM favorite_projects WHERE user_id = '${req.user?.id}' AND project_id = projects.id)` : "";
-    const isArchived = req.query.filter === "2"
-      ? ` AND EXISTS(SELECT user_id FROM archived_projects WHERE user_id = '${req.user?.id}' AND project_id = projects.id)`
-      : ` AND NOT EXISTS(SELECT user_id FROM archived_projects WHERE user_id = '${req.user?.id}' AND project_id = projects.id)`;
-    const categories = this.getFilterByCategoryWhereClosure(req.query.categories as string);
-    const statuses = this.getFilterByStatusWhereClosure(req.query.statuses as string);
+      const result = await projectsService.get({
+        teamId: req.user?.team_id as string,
+        userId: req.user?.id as string,
+        teamMemberId: req.user?.team_member_id as string,
+        isOwner: req.user?.owner || false,
+        isAdmin: req.user?.is_admin || false,
+        filter: req.query.filter as string,
+        categories: req.query.categories as string,
+        statuses: req.query.statuses as string,
+        searchQuery: searchQuery,
+        sortField: sortField,
+        sortOrder: sortOrder,
+        size: size,
+        offset: offset
+      });
 
-    const q = `
-      SELECT ROW_TO_JSON(rec) AS projects
-      FROM (SELECT COUNT(*) AS total,
-                   (SELECT COALESCE(ARRAY_TO_JSON(ARRAY_AGG(ROW_TO_JSON(t))), '[]'::JSON)
-                    FROM (SELECT id,
-                                 name,
-                                 (SELECT name FROM sys_project_statuses WHERE id = status_id) AS status,
-                                 (SELECT color_code FROM sys_project_statuses WHERE id = status_id) AS status_color,
-                                 (SELECT icon FROM sys_project_statuses WHERE id = status_id) AS status_icon,
-                                 EXISTS(SELECT user_id
-                                        FROM favorite_projects
-                                        WHERE user_id = '${req.user?.id}'
-                                          AND project_id = projects.id) AS favorite,
-                                 EXISTS(SELECT user_id
-                                        FROM archived_projects
-                                        WHERE user_id = '${req.user?.id}'
-                                          AND project_id = projects.id) AS archived,
-                                 color_code,
-                                 start_date,
-                                 end_date,
-                                 category_id,
-                                 (SELECT COUNT(*)
-                                  FROM tasks
-                                  WHERE archived IS FALSE
-                                    AND project_id = projects.id) AS all_tasks_count,
-                                 (SELECT COUNT(*)
-                                  FROM tasks
-                                  WHERE archived IS FALSE
-                                    AND project_id = projects.id
-                                    AND status_id IN (SELECT id
-                                                      FROM task_statuses
-                                                      WHERE project_id = projects.id
-                                                        AND category_id IN
-                                                            (SELECT id FROM sys_task_status_categories WHERE is_done IS TRUE))) AS completed_tasks_count,
-                                 (SELECT COUNT(*)
-                                  FROM project_members
-                                  WHERE project_id = projects.id) AS members_count,
-                                 (SELECT get_project_members(projects.id)) AS names,
-                                 (SELECT name FROM clients WHERE id = projects.client_id) AS client_name,
-                                 (SELECT name FROM users WHERE id = projects.owner_id) AS project_owner,
-                                 (SELECT name FROM project_categories WHERE id = projects.category_id) AS category_name,
-                                 (SELECT color_code
-                                  FROM project_categories
-                                  WHERE id = projects.category_id) AS category_color,
+      return res.status(200).send(new ServerResponse(true, result));
+    } else {
+      // OLD: SQL implementation (existing code as fallback)
+      const {searchQuery, sortField, sortOrder, size, offset} = this.toPaginationOptions(req.query, "name");
 
-                                  ((SELECT team_member_id as team_member_id
+      const filterByMember = !req.user?.owner && !req.user?.is_admin ?
+        ` AND is_member_of_project(projects.id, '${req.user?.id}', $1) ` : "";
+
+      const isFavorites = req.query.filter === "1" ? ` AND EXISTS(SELECT user_id FROM favorite_projects WHERE user_id = '${req.user?.id}' AND project_id = projects.id)` : "";
+      const isArchived = req.query.filter === "2"
+        ? ` AND EXISTS(SELECT user_id FROM archived_projects WHERE user_id = '${req.user?.id}' AND project_id = projects.id)`
+        : ` AND NOT EXISTS(SELECT user_id FROM archived_projects WHERE user_id = '${req.user?.id}' AND project_id = projects.id)`;
+      const categories = this.getFilterByCategoryWhereClosure(req.query.categories as string);
+      const statuses = this.getFilterByStatusWhereClosure(req.query.statuses as string);
+
+      const q = `
+        SELECT ROW_TO_JSON(rec) AS projects
+        FROM (SELECT COUNT(*) AS total,
+                     (SELECT COALESCE(ARRAY_TO_JSON(ARRAY_AGG(ROW_TO_JSON(t))), '[]'::JSON)
+                      FROM (SELECT id,
+                                   name,
+                                   (SELECT name FROM sys_project_statuses WHERE id = status_id) AS status,
+                                   (SELECT color_code FROM sys_project_statuses WHERE id = status_id) AS status_color,
+                                   (SELECT icon FROM sys_project_statuses WHERE id = status_id) AS status_icon,
+                                   EXISTS(SELECT user_id
+                                          FROM favorite_projects
+                                          WHERE user_id = '${req.user?.id}'
+                                            AND project_id = projects.id) AS favorite,
+                                   EXISTS(SELECT user_id
+                                          FROM archived_projects
+                                          WHERE user_id = '${req.user?.id}'
+                                            AND project_id = projects.id) AS archived,
+                                   color_code,
+                                   start_date,
+                                   end_date,
+                                   category_id,
+                                   (SELECT COUNT(*)
+                                    FROM tasks
+                                    WHERE archived IS FALSE
+                                      AND project_id = projects.id) AS all_tasks_count,
+                                   (SELECT COUNT(*)
+                                    FROM tasks
+                                    WHERE archived IS FALSE
+                                      AND project_id = projects.id
+                                      AND status_id IN (SELECT id
+                                                        FROM task_statuses
+                                                        WHERE project_id = projects.id
+                                                          AND category_id IN
+                                                              (SELECT id FROM sys_task_status_categories WHERE is_done IS TRUE))) AS completed_tasks_count,
+                                   (SELECT COUNT(*)
                                     FROM project_members
-                                    WHERE project_id = projects.id
-                                      AND project_access_level_id = (SELECT id FROM project_access_levels WHERE key = 'PROJECT_MANAGER'))) AS project_manager_team_member_id,
+                                    WHERE project_id = projects.id) AS members_count,
+                                   (SELECT get_project_members(projects.id)) AS names,
+                                   (SELECT name FROM clients WHERE id = projects.client_id) AS client_name,
+                                   (SELECT name FROM users WHERE id = projects.owner_id) AS project_owner,
+                                   (SELECT name FROM project_categories WHERE id = projects.category_id) AS category_name,
+                                   (SELECT color_code
+                                    FROM project_categories
+                                    WHERE id = projects.category_id) AS category_color,
 
-                                  (SELECT default_view
-                                    FROM project_members prm
-                                    WHERE prm.project_id = projects.id
-                                      AND team_member_id = '${req.user?.team_member_id}') AS team_member_default_view,
+                                    ((SELECT team_member_id as team_member_id
+                                      FROM project_members
+                                      WHERE project_id = projects.id
+                                        AND project_access_level_id = (SELECT id FROM project_access_levels WHERE key = 'PROJECT_MANAGER'))) AS project_manager_team_member_id,
 
-                                 (SELECT CASE
-                                           WHEN ((SELECT MAX(updated_at)
-                                                  FROM tasks
-                                                  WHERE archived IS FALSE
-                                                    AND project_id = projects.id) >
-                                                 updated_at)
-                                             THEN (SELECT MAX(updated_at)
-                                                   FROM tasks
-                                                   WHERE archived IS FALSE
-                                                     AND project_id = projects.id)
-                                           ELSE updated_at END) AS updated_at
-                          FROM projects
-                          WHERE team_id = $1 ${categories} ${statuses} ${isArchived} ${isFavorites} ${filterByMember} ${searchQuery}
-                          ORDER BY ${sortField} ${sortOrder}
-                          LIMIT $2 OFFSET $3) t) AS data
-            FROM projects
-            WHERE team_id = $1 ${categories} ${statuses} ${isArchived} ${isFavorites} ${filterByMember} ${searchQuery}) rec;
-    `;
-    const result = await db.query(q, [req.user?.team_id || null, size, offset]);
-    const [data] = result.rows;
+                                    (SELECT default_view
+                                      FROM project_members prm
+                                      WHERE prm.project_id = projects.id
+                                        AND team_member_id = '${req.user?.team_member_id}') AS team_member_default_view,
 
-    for (const project of data?.projects.data || []) {
-      project.progress = project.all_tasks_count > 0
-        ? ((project.completed_tasks_count / project.all_tasks_count) * 100).toFixed(0) : 0;
+                                   (SELECT CASE
+                                             WHEN ((SELECT MAX(updated_at)
+                                                    FROM tasks
+                                                    WHERE archived IS FALSE
+                                                      AND project_id = projects.id) >
+                                                   updated_at)
+                                               THEN (SELECT MAX(updated_at)
+                                                     FROM tasks
+                                                     WHERE archived IS FALSE
+                                                       AND project_id = projects.id)
+                                             ELSE updated_at END) AS updated_at
+                            FROM projects
+                            WHERE team_id = $1 ${categories} ${statuses} ${isArchived} ${isFavorites} ${filterByMember} ${searchQuery}
+                            ORDER BY ${sortField} ${sortOrder}
+                            LIMIT $2 OFFSET $3) t) AS data
+              FROM projects
+              WHERE team_id = $1 ${categories} ${statuses} ${isArchived} ${isFavorites} ${filterByMember} ${searchQuery}) rec;
+      `;
+      const result = await db.query(q, [req.user?.team_id || null, size, offset]);
+      const [data] = result.rows;
 
-      project.updated_at_string = moment(project.updated_at).fromNow();
+      for (const project of data?.projects.data || []) {
+        project.progress = project.all_tasks_count > 0
+          ? ((project.completed_tasks_count / project.all_tasks_count) * 100).toFixed(0) : 0;
 
-      project.names = this.createTagList(project?.names);
-      project.names.map((a: any) => a.color_code = getColor(a.name));
+        project.updated_at_string = moment(project.updated_at).fromNow();
 
-     if (project.project_manager_team_member_id) {
-        project.project_manager = {
-          id : project.project_manager_team_member_id
-        };
-     }
+        project.names = this.createTagList(project?.names);
+        project.names.map((a: any) => a.color_code = getColor(a.name));
 
+       if (project.project_manager_team_member_id) {
+          project.project_manager = {
+            id : project.project_manager_team_member_id
+          };
+       }
+
+      }
+
+      return res.status(200).send(new ServerResponse(true, data?.projects || this.paginatedDatasetDefaultStruct));
     }
-
-    return res.status(200).send(new ServerResponse(true, data?.projects || this.paginatedDatasetDefaultStruct));
   }
 
   @HandleExceptions()
@@ -373,73 +425,88 @@ export default class ProjectsController extends WorklenzControllerBase {
 
   @HandleExceptions()
   public static async getById(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const q = `
-      SELECT projects.id,
-             projects.name,
-             projects.color_code,
-             projects.notes,
-             projects.key,
-             projects.start_date,
-             projects.end_date,
-             projects.status_id,
-             projects.health_id,
-             projects.created_at,
-             projects.updated_at,
-             projects.folder_id,
-             projects.phase_label,
-             projects.category_id,
-             (projects.estimated_man_days) AS man_days,
-             (projects.estimated_working_days) AS working_days,
-             (projects.hours_per_day) AS hours_per_day,
-             (SELECT name FROM project_categories WHERE id = projects.category_id) AS category_name,
-             (SELECT color_code
-              FROM project_categories
-              WHERE id = projects.category_id) AS category_color,
-             (EXISTS(SELECT 1 FROM project_subscribers WHERE project_id = $1 AND user_id = $3)) AS subscribed,
-             (SELECT name FROM users WHERE id = projects.owner_id) AS project_owner,
-             sps.name AS status,
-             sps.color_code AS status_color,
-             sps.icon AS status_icon,
-             (SELECT name FROM clients WHERE id = projects.client_id) AS client_name,
-             projects.use_manual_progress,
-             projects.use_weighted_progress,
-             projects.use_time_progress,
+    const featureFlags = FeatureFlagsService.getInstance();
 
-             (SELECT COALESCE(ROW_TO_JSON(pm), '{}'::JSON)
-                    FROM (SELECT team_member_id AS id,
-                                (SELECT COALESCE(ROW_TO_JSON(pmi), '{}'::JSON)
-                                  FROM (SELECT name,
-                                              email,
-                                              avatar_url
-                                        FROM team_member_info_view tmiv
-                                        WHERE tmiv.team_member_id = pm.team_member_id
-                                          AND tmiv.team_id = (SELECT team_id FROM projects WHERE id = $1)) pmi) AS project_manager_info,
-                                EXISTS(SELECT email
-                                        FROM email_invitations
-                                        WHERE team_member_id = pm.team_member_id
-                                          AND email_invitations.team_id = (SELECT team_id
-                                                                          FROM team_member_info_view
-                                                                          WHERE team_member_id = pm.team_member_id)) AS pending_invitation,
-                                (SELECT active FROM team_members WHERE id = pm.team_member_id)
-                          FROM project_members pm
-                          WHERE project_id = $1
-                            AND project_access_level_id = (SELECT id FROM project_access_levels WHERE key = 'PROJECT_MANAGER')) pm) AS project_manager
-      FROM projects
-             LEFT JOIN sys_project_statuses sps ON projects.status_id = sps.id
-      WHERE projects.id = $1
-        AND team_id = $2;
-    `;
-    const result = await db.query(q, [req.params.id, req.user?.team_id ?? null, req.user?.id ?? null]);
-    const [data] = result.rows;
+    if (featureFlags.isEnabled('projects', 'read')) {
+      // NEW: Prisma implementation
+      const projectsService = ProjectsService.getInstance();
+      const data = await projectsService.getById(
+        req.params.id,
+        req.user?.team_id ?? null as string,
+        req.user?.id ?? null as string
+      );
 
-    if (data && data.project_manager) {
-      data.project_manager.name = data.project_manager.project_manager_info.name;
-      data.project_manager.email = data.project_manager.project_manager_info.email;
-      data.project_manager.avatar_url = data.project_manager.project_manager_info.avatar_url;
-      data.project_manager.color_code = getColor(data.project_manager.name);
+      return res.status(200).send(new ServerResponse(true, data));
+    } else {
+      // OLD: SQL implementation (existing code as fallback)
+      const q = `
+        SELECT projects.id,
+               projects.name,
+               projects.color_code,
+               projects.notes,
+               projects.key,
+               projects.start_date,
+               projects.end_date,
+               projects.status_id,
+               projects.health_id,
+               projects.created_at,
+               projects.updated_at,
+               projects.folder_id,
+               projects.phase_label,
+               projects.category_id,
+               (projects.estimated_man_days) AS man_days,
+               (projects.estimated_working_days) AS working_days,
+               (projects.hours_per_day) AS hours_per_day,
+               (SELECT name FROM project_categories WHERE id = projects.category_id) AS category_name,
+               (SELECT color_code
+                FROM project_categories
+                WHERE id = projects.category_id) AS category_color,
+               (EXISTS(SELECT 1 FROM project_subscribers WHERE project_id = $1 AND user_id = $3)) AS subscribed,
+               (SELECT name FROM users WHERE id = projects.owner_id) AS project_owner,
+               sps.name AS status,
+               sps.color_code AS status_color,
+               sps.icon AS status_icon,
+               (SELECT name FROM clients WHERE id = projects.client_id) AS client_name,
+               projects.use_manual_progress,
+               projects.use_weighted_progress,
+               projects.use_time_progress,
+
+               (SELECT COALESCE(ROW_TO_JSON(pm), '{}'::JSON)
+                      FROM (SELECT team_member_id AS id,
+                                  (SELECT COALESCE(ROW_TO_JSON(pmi), '{}'::JSON)
+                                    FROM (SELECT name,
+                                                email,
+                                                avatar_url
+                                          FROM team_member_info_view tmiv
+                                          WHERE tmiv.team_member_id = pm.team_member_id
+                                            AND tmiv.team_id = (SELECT team_id FROM projects WHERE id = $1)) pmi) AS project_manager_info,
+                                  EXISTS(SELECT email
+                                          FROM email_invitations
+                                          WHERE team_member_id = pm.team_member_id
+                                            AND email_invitations.team_id = (SELECT team_id
+                                                                            FROM team_member_info_view
+                                                                            WHERE team_member_id = pm.team_member_id)) AS pending_invitation,
+                                  (SELECT active FROM team_members WHERE id = pm.team_member_id)
+                            FROM project_members pm
+                            WHERE project_id = $1
+                              AND project_access_level_id = (SELECT id FROM project_access_levels WHERE key = 'PROJECT_MANAGER')) pm) AS project_manager
+        FROM projects
+               LEFT JOIN sys_project_statuses sps ON projects.status_id = sps.id
+        WHERE projects.id = $1
+          AND team_id = $2;
+      `;
+      const result = await db.query(q, [req.params.id, req.user?.team_id ?? null, req.user?.id ?? null]);
+      const [data] = result.rows;
+
+      if (data && data.project_manager) {
+        data.project_manager.name = data.project_manager.project_manager_info.name;
+        data.project_manager.email = data.project_manager.project_manager_info.email;
+        data.project_manager.avatar_url = data.project_manager.project_manager_info.avatar_url;
+        data.project_manager.color_code = getColor(data.project_manager.name);
+      }
+
+      return res.status(200).send(new ServerResponse(true, data));
     }
-
-    return res.status(200).send(new ServerResponse(true, data));
   }
 
   @HandleExceptions({
@@ -489,37 +556,51 @@ export default class ProjectsController extends WorklenzControllerBase {
 
   @HandleExceptions()
   public static async getOverview(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const q = `
-      SELECT (SELECT COUNT(id)
-              FROM tasks
-              WHERE archived IS FALSE
-                AND project_id = $1
-                AND status_id IN
-                    (SELECT id
-                     FROM task_statuses
-                     WHERE category_id =
-                           (SELECT id FROM sys_task_status_categories WHERE is_done IS TRUE))) AS done_task_count,
+    const featureFlags = FeatureFlagsService.getInstance();
 
-             (SELECT COUNT(id)
-              FROM tasks
-              WHERE archived IS FALSE
-                AND project_id = $1
-                AND status_id IN
-                    (SELECT id
-                     FROM task_statuses
-                     WHERE category_id IN
-                           (SELECT id
-                            FROM sys_task_status_categories
-                            WHERE is_doing IS TRUE
-                               OR is_todo IS TRUE))) AS pending_task_count
-      FROM projects
-      WHERE id = $1
-        AND team_id = $2;
-    `;
-    const result = await db.query(q, [req.params.id, req.user?.team_id || null]);
-    const [data] = result.rows;
+    if (featureFlags.isEnabled('projects', 'read')) {
+      // NEW: Prisma implementation
+      const projectsService = ProjectsService.getInstance();
+      const data = await projectsService.getOverview(
+        req.params.id,
+        req.user?.team_id || null as string
+      );
 
-    return res.status(200).send(new ServerResponse(true, data));
+      return res.status(200).send(new ServerResponse(true, data));
+    } else {
+      // OLD: SQL implementation (existing code as fallback)
+      const q = `
+        SELECT (SELECT COUNT(id)
+                FROM tasks
+                WHERE archived IS FALSE
+                  AND project_id = $1
+                  AND status_id IN
+                      (SELECT id
+                       FROM task_statuses
+                       WHERE category_id =
+                             (SELECT id FROM sys_task_status_categories WHERE is_done IS TRUE))) AS done_task_count,
+
+               (SELECT COUNT(id)
+                FROM tasks
+                WHERE archived IS FALSE
+                  AND project_id = $1
+                  AND status_id IN
+                      (SELECT id
+                       FROM task_statuses
+                       WHERE category_id IN
+                             (SELECT id
+                              FROM sys_task_status_categories
+                              WHERE is_doing IS TRUE
+                                 OR is_todo IS TRUE))) AS pending_task_count
+        FROM projects
+        WHERE id = $1
+          AND team_id = $2;
+      `;
+      const result = await db.query(q, [req.params.id, req.user?.team_id || null]);
+      const [data] = result.rows;
+
+      return res.status(200).send(new ServerResponse(true, data));
+    }
   }
 
   @HandleExceptions()

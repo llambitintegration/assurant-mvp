@@ -246,62 +246,67 @@ export class TeamsService {
   }
 
   /**
-   * Get teams for a user
-   * Includes teams owned by user and teams where user is a member
+   * Get teams for a user with full metadata
+   * Replaces: SQL query in teams-controller.ts:27-51 (Tier 2: Typed $queryRaw)
+   *
+   * This is a complex query with subqueries and EXISTS clauses that would be
+   * inefficient to implement with pure Prisma. Using typed $queryRaw for optimal performance.
+   *
+   * Includes teams owned by user and teams where user is a member with:
+   * - active flag (if team matches activeTeamId)
+   * - owner flag (if user owns the team)
+   * - pending_invitation flag (if there's a pending invitation for this user/team)
+   * - owns_by field (owner name or 'You' if current user)
    *
    * @param userId - User ID
    * @param activeTeamId - Currently active team ID (optional)
    * @returns Array of teams with metadata
    */
-  async getTeamsForUser(userId: string, activeTeamId?: string) {
-    // Get teams owned by user
-    const ownedTeams = await prisma.teams.findMany({
-      where: { user_id: userId },
-      select: {
-        id: true,
-        name: true,
-        user_id: true,
-        created_at: true,
-        updated_at: true
-      }
-    });
+  async getTeamsForUser(userId: string, activeTeamId?: string | null) {
+    // Define the result type matching the SQL query output
+    interface TeamResult {
+      id: string;
+      name: string;
+      created_at: Date;
+      active: boolean;
+      owner: boolean;
+      pending_invitation: boolean;
+      owns_by: string;
+    }
 
-    // Get teams where user is a member
-    const memberTeams = await prisma.team_members.findMany({
-      where: {
-        user_id: userId,
-        active: true
-      },
-      select: {
-        team: {
-          select: {
-            id: true,
-            name: true,
-            user_id: true,
-            created_at: true,
-            updated_at: true
-          }
-        }
-      }
-    });
+    // Use typed $queryRaw with the exact SQL query from the controller
+    // This maintains 100% behavioral parity with the original implementation
+    //
+    // Note: When activeTeamId is null/undefined, we need to handle the comparison specially
+    // because "id = NULL" always returns false in SQL (use IS NULL instead)
+    // But to match the original SQL behavior, we pass NULL which makes all active flags false
+    const activeTeamParam = activeTeamId ? activeTeamId : null;
 
-    // Combine and deduplicate
-    const allTeams = [
-      ...ownedTeams,
-      ...memberTeams.map(m => m.team)
-    ];
+    const teams = await prisma.$queryRaw<TeamResult[]>`
+      SELECT id,
+             name,
+             created_at,
+             (id = ${activeTeamParam}::uuid) AS active,
+             (user_id = ${userId}::uuid) AS owner,
+             EXISTS(SELECT 1
+                    FROM email_invitations
+                    WHERE team_id = teams.id
+                      AND team_member_id = (SELECT id
+                                            FROM team_members
+                                            WHERE team_members.user_id = ${userId}::uuid
+                                              AND team_members.team_id = teams.id)) AS pending_invitation,
+             (CASE
+                WHEN user_id = ${userId}::uuid THEN 'You'
+                ELSE (SELECT name FROM users WHERE id = teams.user_id) END
+               ) AS owns_by
+      FROM teams
+      WHERE user_id = ${userId}::uuid
+         OR id IN (SELECT team_id FROM team_members WHERE team_members.user_id = ${userId}::uuid
+               AND team_members.active IS TRUE)
+      ORDER BY name;
+    `;
 
-    // Remove duplicates by team ID
-    const uniqueTeams = Array.from(
-      new Map(allTeams.map(team => [team.id, team])).values()
-    );
-
-    // Add metadata
-    return uniqueTeams.map(team => ({
-      ...team,
-      active: team.id === activeTeamId,
-      owner: team.user_id === userId
-    }));
+    return teams;
   }
 
   /**
@@ -410,5 +415,180 @@ export class TeamsService {
         active: true
       }
     });
+  }
+
+  /**
+   * Activate a team for a user
+   * Replaces: activate_team stored procedure (teams-controller.ts:89-90)
+   *
+   * Sets the user's active_team to the specified team_id
+   * Also deletes any pending email invitations for this user/team
+   *
+   * @param userId - User ID
+   * @param teamId - Team ID to activate
+   * @returns Updated user with new active_team
+   */
+  async activateTeam(userId: string, teamId: string) {
+    return await prisma.$transaction(async (tx) => {
+      // Verify user is member of this team before activating
+      const teamMember = await tx.team_members.findFirst({
+        where: {
+          user_id: userId,
+          team_id: teamId,
+          active: true
+        }
+      });
+
+      if (!teamMember) {
+        throw new Error('User is not a member of this team');
+      }
+
+      // Update user's active team
+      const updatedUser = await tx.users.update({
+        where: { id: userId },
+        data: { active_team: teamId }
+      });
+
+      // Delete any pending email invitations for this user/team combination
+      await tx.email_invitations.deleteMany({
+        where: {
+          team_id: teamId,
+          team_member_id: teamMember.id
+        }
+      });
+
+      return updatedUser;
+    });
+  }
+
+  /**
+   * Update team name with uniqueness validation
+   * Replaces: update_team_name_once stored procedure (teams-controller.ts:100-101)
+   *
+   * Updates team name only if it's different from the current name
+   * Validates that the new name is unique for this user
+   *
+   * @param userId - User ID (must be team owner)
+   * @param teamId - Team ID to update
+   * @param newName - New team name
+   * @returns Updated team
+   * @throws Error if name already exists for this user
+   */
+  async updateTeamName(userId: string, teamId: string, newName: string) {
+    return await prisma.$transaction(async (tx) => {
+      // Verify user owns this team
+      const team = await tx.teams.findFirst({
+        where: {
+          id: teamId,
+          user_id: userId
+        }
+      });
+
+      if (!team) {
+        throw new Error('Team not found or user is not the owner');
+      }
+
+      // Check if name is actually different
+      if (team.name === newName) {
+        return team; // No update needed
+      }
+
+      // Check for duplicate team name for this user
+      const duplicateTeam = await tx.teams.findFirst({
+        where: {
+          user_id: userId,
+          name: newName,
+          id: { not: teamId } // Exclude current team
+        }
+      });
+
+      if (duplicateTeam) {
+        const error = new Error('TEAM_NAME_EXISTS_ERROR');
+        error.name = 'TEAM_NAME_EXISTS_ERROR';
+        throw error;
+      }
+
+      // Update team name
+      const updatedTeam = await tx.teams.update({
+        where: { id: teamId },
+        data: {
+          name: newName,
+          updated_at: new Date()
+        }
+      });
+
+      return updatedTeam;
+    });
+  }
+
+  /**
+   * Get pending team invitations for a user
+   * Replaces: SQL query in teams-controller.ts:57-68
+   *
+   * Returns all pending email invitations sent to the user's email
+   * with team and team owner information
+   *
+   * @param userId - User ID
+   * @returns Array of pending invitations with team details
+   */
+  async getTeamInvites(userId: string) {
+    // First get user's email
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { email: true }
+    });
+
+    if (!user) {
+      return [];
+    }
+
+    // Get all pending invitations for this email
+    const invitations = await prisma.email_invitations.findMany({
+      where: {
+        email: user.email
+      },
+      include: {
+        teams: {
+          select: {
+            id: true,
+            name: true,
+            user_id: true,
+            users_teams_user_idTousers: {
+              select: {
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Transform to match SQL query output format
+    return invitations.map(inv => ({
+      id: inv.id,
+      team_id: inv.team_id,
+      team_member_id: inv.team_member_id,
+      team_name: inv.teams?.name || null,
+      team_owner: inv.teams?.users_teams_user_idTousers?.name || null
+    }));
+  }
+
+  /**
+   * Check if a team name already exists for a user
+   * Replaces: SQL query in teams-controller.ts:14-15
+   *
+   * @param userId - User ID
+   * @param teamName - Team name to check
+   * @returns true if name exists, false otherwise
+   */
+  async checkTeamNameExists(userId: string, teamName: string): Promise<boolean> {
+    const count = await prisma.teams.count({
+      where: {
+        user_id: userId,
+        name: teamName
+      }
+    });
+
+    return count > 0;
   }
 }

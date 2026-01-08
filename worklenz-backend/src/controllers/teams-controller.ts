@@ -5,17 +5,33 @@ import db from "../config/db";
 import { ServerResponse } from "../models/server-response";
 import WorklenzControllerBase from "./worklenz-controller-base";
 import HandleExceptions from "../decorators/handle-exceptions";
+import { FeatureFlagsService } from "../services/feature-flags/feature-flags.service";
+import { TeamsService } from "../services/teams/teams-service";
 
 export default class TeamsController extends WorklenzControllerBase {
   @HandleExceptions()
   public static async create(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
     const { name } = req.body;
+    const featureFlags = FeatureFlagsService.getInstance();
+    const teamsService = new TeamsService();
 
-    const checkAvailabilityq = `SELECT * from teams WHERE user_id = $2 AND name = $1`;
-    const check = await db.query(checkAvailabilityq, [name, req.user?.id]);
+    // Check team name availability
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Prisma implementation
+      const nameExists = await teamsService.checkTeamNameExists(req.user?.id!, name);
+      if (nameExists) {
+        return res.status(200).send(new ServerResponse(false, null, "Team name already exist. Try anothor!"));
+      }
+    } else {
+      // OLD: SQL implementation (fallback)
+      const checkAvailabilityq = `SELECT * from teams WHERE user_id = $2 AND name = $1`;
+      const check = await db.query(checkAvailabilityq, [name, req.user?.id]);
+      if (check.rows.length) {
+        return res.status(200).send(new ServerResponse(false, null, "Team name already exist. Try anothor!"));
+      }
+    }
 
-    if (check.rows.length) return res.status(200).send(new ServerResponse(false, null, "Team name already exist. Try anothor!"));
-
+    // NOTE: create_new_team stored procedure is kept as-is (Tier 3: complex business logic)
     const q = `SELECT create_new_team($1, $2);`;
     const result = await db.query(q, [name, req.user?.id]);
     const [data] = result.rows;
@@ -24,48 +40,68 @@ export default class TeamsController extends WorklenzControllerBase {
 
   @HandleExceptions()
   public static async get(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const q = `
-      SELECT id,
-             name,
-             created_at,
-             (id = $2) AS active,
-             (user_id = $1) AS owner,
-             EXISTS(SELECT 1
-                    FROM email_invitations
-                    WHERE team_id = teams.id
-                      AND team_member_id = (SELECT id
-                                            FROM team_members
-                                            WHERE team_members.user_id = $1
-                                              AND team_members.team_id = teams.id)) AS pending_invitation,
-             (CASE
-                WHEN user_id = $1 THEN 'You'
-                ELSE (SELECT name FROM users WHERE id = teams.user_id) END
-               ) AS owns_by
-      FROM teams
-      WHERE user_id = $1
-         OR id IN (SELECT team_id FROM team_members WHERE team_members.user_id = $1
-               AND team_members.active IS TRUE)
-      ORDER BY name;
-    `;
+    const featureFlags = FeatureFlagsService.getInstance();
+    const teamsService = new TeamsService();
 
-    const result = await db.query(q, [req.user?.id, req.user?.team_id ?? null]);
-    return res.status(200).send(new ServerResponse(true, result.rows));
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Prisma implementation (typed $queryRaw for complex query)
+      const teams = await teamsService.getTeamsForUser(req.user?.id!, req.user?.team_id ?? null);
+      return res.status(200).send(new ServerResponse(true, teams));
+    } else {
+      // OLD: SQL implementation (fallback)
+      const q = `
+        SELECT id,
+               name,
+               created_at,
+               (id = $2) AS active,
+               (user_id = $1) AS owner,
+               EXISTS(SELECT 1
+                      FROM email_invitations
+                      WHERE team_id = teams.id
+                        AND team_member_id = (SELECT id
+                                              FROM team_members
+                                              WHERE team_members.user_id = $1
+                                                AND team_members.team_id = teams.id)) AS pending_invitation,
+               (CASE
+                  WHEN user_id = $1 THEN 'You'
+                  ELSE (SELECT name FROM users WHERE id = teams.user_id) END
+                 ) AS owns_by
+        FROM teams
+        WHERE user_id = $1
+           OR id IN (SELECT team_id FROM team_members WHERE team_members.user_id = $1
+                 AND team_members.active IS TRUE)
+        ORDER BY name;
+      `;
+
+      const result = await db.query(q, [req.user?.id, req.user?.team_id ?? null]);
+      return res.status(200).send(new ServerResponse(true, result.rows));
+    }
   }
 
   @HandleExceptions()
   public static async getTeamInvites(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const q = `
-      SELECT id,
-             team_id,
-             team_member_id,
-             (SELECT name FROM teams WHERE id = team_id) AS team_name,
-             (SELECT name FROM users WHERE id = (SELECT user_id FROM teams WHERE id = team_id)) AS team_owner
-      FROM email_invitations
-      WHERE email = (SELECT email FROM users WHERE id = $1);
-    `;
+    const featureFlags = FeatureFlagsService.getInstance();
+    const teamsService = new TeamsService();
 
-    const result = await db.query(q, [req.user?.id]);
-    return res.status(200).send(new ServerResponse(true, result.rows));
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Prisma implementation
+      const invites = await teamsService.getTeamInvites(req.user?.id!);
+      return res.status(200).send(new ServerResponse(true, invites));
+    } else {
+      // OLD: SQL implementation (fallback)
+      const q = `
+        SELECT id,
+               team_id,
+               team_member_id,
+               (SELECT name FROM teams WHERE id = team_id) AS team_name,
+               (SELECT name FROM users WHERE id = (SELECT user_id FROM teams WHERE id = team_id)) AS team_owner
+        FROM email_invitations
+        WHERE email = (SELECT email FROM users WHERE id = $1);
+      `;
+
+      const result = await db.query(q, [req.user?.id]);
+      return res.status(200).send(new ServerResponse(true, result.rows));
+    }
   }
 
   @HandleExceptions()
@@ -86,9 +122,19 @@ export default class TeamsController extends WorklenzControllerBase {
 
   @HandleExceptions()
   public static async activate(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const q = `SELECT activate_team($1, $2)`;
-    await db.query(q, [req.body.id, req.user?.id ?? null]);
-    return res.status(200).send(new ServerResponse(true, { subdomain: null }));
+    const featureFlags = FeatureFlagsService.getInstance();
+    const teamsService = new TeamsService();
+
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Prisma implementation
+      await teamsService.activateTeam(req.user?.id ?? null!, req.body.id);
+      return res.status(200).send(new ServerResponse(true, { subdomain: null }));
+    } else {
+      // OLD: SQL implementation (fallback)
+      const q = `SELECT activate_team($1, $2)`;
+      await db.query(q, [req.body.id, req.user?.id ?? null]);
+      return res.status(200).send(new ServerResponse(true, { subdomain: null }));
+    }
   }
 
   @HandleExceptions({
@@ -97,8 +143,22 @@ export default class TeamsController extends WorklenzControllerBase {
     }
   })
   public static async updateNameOnce(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const q = `SELECT update_team_name_once($1, $2, $3);`;
-    const result = await db.query(q, [req.user?.id, req.user?.team_id, req.body.name || null]);
-    return res.status(200).send(new ServerResponse(true, result.rows));
+    const featureFlags = FeatureFlagsService.getInstance();
+    const teamsService = new TeamsService();
+
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Prisma implementation
+      const updatedTeam = await teamsService.updateTeamName(
+        req.user?.id!,
+        req.user?.team_id!,
+        req.body.name || null
+      );
+      return res.status(200).send(new ServerResponse(true, [updatedTeam]));
+    } else {
+      // OLD: SQL implementation (fallback)
+      const q = `SELECT update_team_name_once($1, $2, $3);`;
+      const result = await db.query(q, [req.user?.id, req.user?.team_id, req.body.name || null]);
+      return res.status(200).send(new ServerResponse(true, result.rows));
+    }
   }
 }

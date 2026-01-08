@@ -3,6 +3,8 @@ import { IActivityLog, IActivityLogAttributeTypes, IActivityLogChangeType } from
 import { log_error } from "../../shared/utils";
 import moment from "moment";
 import { getLoggedInUserIdFromSocket } from "../../socket.io/util";
+import {teamMemberInfoService} from "../views/team-member-info.service";
+import {getFeatureFlags} from "../feature-flags/feature-flags.service";
 
 export async function insertToActivityLogs(activityLog: IActivityLog) {
   try {
@@ -117,20 +119,36 @@ export async function logTotalMinutes(activityLog: IActivityLog) {
 
 export async function logMemberAssignment(activityLog: IActivityLog) {
   const { task_id, new_value, old_value } = activityLog;
-
-  const q = `SELECT user_id, name
-             FROM team_member_info_view
-             WHERE team_member_id = $1;`;
-  const result = await db.query(q, [new_value]);
-  const [data] = result.rows;
+  const featureFlags = getFeatureFlags();
 
   if (!task_id || !activityLog.socket) return;
   if (old_value !== new_value) {
-    activityLog.new_value = data.user_id || null;
+    let userId = null;
+    let name = null;
+
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Use TeamMemberInfoService
+      const memberInfo = await teamMemberInfoService.getTeamMemberById(new_value);
+      if (memberInfo) {
+        userId = memberInfo.user_id;
+        name = memberInfo.name;
+      }
+    } else {
+      // LEGACY: Keep original SQL
+      const q = `SELECT user_id, name
+                 FROM team_member_info_view
+                 WHERE team_member_id = $1;`;
+      const result = await db.query(q, [new_value]);
+      const [data] = result.rows;
+      userId = data?.user_id || null;
+      name = data?.name || null;
+    }
+
+    activityLog.new_value = userId;
     activityLog.user_id = getLoggedInUserIdFromSocket(activityLog.socket);
     activityLog.log_type = activityLog.assign_type === "ASSIGN" ? IActivityLogChangeType.ASSIGN : IActivityLogChangeType.UNASSIGN;
     activityLog.attribute_type = IActivityLogAttributeTypes.ASSIGNEES;
-    activityLog.next_string = data.name || null;
+    activityLog.next_string = name;
 
     insertToActivityLogs(activityLog);
   }

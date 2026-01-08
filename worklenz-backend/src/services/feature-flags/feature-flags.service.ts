@@ -17,6 +17,8 @@ export type FeatureFlagModule =
   | 'teams'
   | 'projects'
   | 'tasks'
+  | 'labels'
+  | 'custom_columns'
   | 'resources'
   | 'reports'
   | 'notifications'
@@ -143,6 +145,8 @@ export class FeatureFlagsService {
       'teams',
       'projects',
       'tasks',
+      'labels',
+      'custom_columns',
       'resources',
       'reports',
       'notifications',
@@ -184,6 +188,8 @@ Emergency rollback:
       'teams',
       'projects',
       'tasks',
+      'labels',
+      'custom_columns',
       'resources',
       'reports',
       'notifications',

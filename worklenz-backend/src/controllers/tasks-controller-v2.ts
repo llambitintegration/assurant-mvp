@@ -14,6 +14,8 @@ import TasksControllerBase, {
   GroupBy,
   ITaskGroup,
 } from "./tasks-controller-base";
+import { teamMemberInfoService } from "../services/views/team-member-info.service";
+import { getFeatureFlags } from "../services/feature-flags/feature-flags.service";
 
 export class TaskListGroup implements ITaskGroup {
   name: string;
@@ -792,6 +794,28 @@ export default class TasksControllerV2 extends TasksControllerBase {
     userId: string,
     teamId: string
   ) {
+    const featureFlags = getFeatureFlags();
+
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Use TeamMemberInfoService
+      const memberInfo = await teamMemberInfoService.getTeamMemberByTeamAndUser(teamId, userId);
+
+      if (!memberInfo) {
+        return false;
+      }
+
+      const q = `
+        SELECT EXISTS(
+          SELECT 1 FROM tasks_assignees WHERE task_id = $1 AND team_member_id = $2
+        );
+      `;
+      const result = await db.query(q, [taskId, memberInfo.team_member_id]);
+      const [data] = result.rows;
+
+      return data.exists;
+    }
+
+    // LEGACY: Use direct SQL query
     const q = `
     SELECT EXISTS(
         SELECT * FROM tasks_assignees WHERE task_id = $1 AND team_member_id = (SELECT team_member_id FROM team_member_info_view WHERE user_id = $2 AND team_id = $3)

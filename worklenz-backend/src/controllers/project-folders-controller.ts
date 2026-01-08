@@ -7,6 +7,8 @@ import WorklenzControllerBase from "./worklenz-controller-base";
 import HandleExceptions from "../decorators/handle-exceptions";
 import {slugify} from "../shared/utils";
 import {IProjectFolder} from "../interfaces/project-folder";
+import {teamMemberInfoService} from "../services/views/team-member-info.service";
+import {getFeatureFlags} from "../services/feature-flags/feature-flags.service";
 
 export default class ProjectFoldersController extends WorklenzControllerBase {
   @HandleExceptions()
@@ -30,8 +32,40 @@ export default class ProjectFoldersController extends WorklenzControllerBase {
 
   @HandleExceptions()
   public static async get(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+    const featureFlags = getFeatureFlags();
     const parentFolderId = (req.query.parent as string)?.trim() || null;
 
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Use TeamMemberInfoService
+      const qBase = [
+        `SELECT id, name, key, color_code, created_at, created_by
+         FROM project_folders
+         WHERE team_id = $1
+        `,
+        parentFolderId ? `AND parent_folder_id = $2` : "",
+        `ORDER BY name;`
+      ].join(" ");
+      const params = parentFolderId ? [req.user?.team_id, parentFolderId] : [req.user?.team_id];
+
+      const result = await db.query(qBase, params);
+
+      // Enrich with creator names from TeamMemberInfoService
+      for (const folder of result.rows) {
+        if (folder.created_by && req.user?.team_id) {
+          const memberInfo = await teamMemberInfoService.getTeamMemberByTeamAndUser(
+            req.user.team_id,
+            folder.created_by
+          );
+          folder.created_by = memberInfo?.name || null;
+        } else {
+          folder.created_by = null;
+        }
+      }
+
+      return res.status(200).send(new ServerResponse<IProjectFolder[]>(true, result.rows));
+    }
+
+    // LEGACY: Use direct SQL query
     const q = [
       `SELECT id,
               name,

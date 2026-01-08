@@ -17,6 +17,8 @@ import FileConstants from "../shared/file-constants";
 import axios from "axios";
 import {log_error} from "../shared/utils";
 import {DEFAULT_ERROR_MESSAGE} from "../shared/constants";
+import {FeatureFlagsService} from "../services/feature-flags/feature-flags.service";
+import {AuthService} from "../services/auth/auth-service";
 
 export default class AuthController extends WorklenzControllerBase {
   /** This just send ok response to the client when the request came here through the sign-up-validator */
@@ -84,88 +86,169 @@ export default class AuthController extends WorklenzControllerBase {
 
   @HandleExceptions()
   public static async changePassword(req: IWorkLenzRequest, res: IWorkLenzResponse) {
-
+    const featureFlags = FeatureFlagsService.getInstance();
     const currentPassword = req.body.password;
     const newPassword = req.body.new_password;
+    const userId = req.user?.id || null;
 
-    const q = `SELECT id, email, google_id, password FROM users WHERE id = $1;`;
-    const result = await db.query(q, [req.user?.id || null]);
-    const [data] = result.rows;
+    if (!userId) {
+      return res.status(200).send(new ServerResponse(false, null, "User not found!"));
+    }
 
-    if (data) {
-      // Compare the password
-      if (bcrypt.compareSync(currentPassword, data.password)) {
-        const salt = bcrypt.genSaltSync(10);
-        const encryptedPassword = bcrypt.hashSync(newPassword, salt);
+    if (featureFlags.isEnabled('auth')) {
+      // NEW: Prisma implementation via AuthService
+      const authService = new AuthService();
+      const success = await authService.changePassword(userId, currentPassword, newPassword);
 
-        const updatePasswordQ = `UPDATE users SET password = $1 WHERE id = $2;`;
-        await db.query(updatePasswordQ, [encryptedPassword, req.user?.id || null]);
-
-        if (req.user?.id)
-          AuthController.destroyOtherSessions(req.user.id, req.sessionID);
-
+      if (success) {
+        await AuthController.destroyOtherSessions(userId, req.sessionID);
         return res.status(200).send(new ServerResponse(true, null, "Password updated successfully!"));
       }
 
+      // Check if user exists to provide appropriate error message
+      const user = await authService.getUserById(userId);
+      if (!user) {
+        return res.status(200).send(new ServerResponse(false, null, "User not found!"));
+      }
+
       return res.status(200).send(new ServerResponse(false, null, "Old password does not match!"));
+    } else {
+      // OLD: SQL implementation (existing code as fallback)
+      const q = `SELECT id, email, google_id, password FROM users WHERE id = $1;`;
+      const result = await db.query(q, [userId]);
+      const [data] = result.rows;
+
+      if (data) {
+        // Compare the password
+        if (bcrypt.compareSync(currentPassword, data.password)) {
+          const salt = bcrypt.genSaltSync(10);
+          const encryptedPassword = bcrypt.hashSync(newPassword, salt);
+
+          const updatePasswordQ = `UPDATE users SET password = $1 WHERE id = $2;`;
+          await db.query(updatePasswordQ, [encryptedPassword, userId]);
+
+          await AuthController.destroyOtherSessions(userId, req.sessionID);
+
+          return res.status(200).send(new ServerResponse(true, null, "Password updated successfully!"));
+        }
+
+        return res.status(200).send(new ServerResponse(false, null, "Old password does not match!"));
+      }
+      return res.status(200).send(new ServerResponse(false, null, "User not found!"));
     }
-    return res.status(200).send(new ServerResponse(false, null, "User not found!"));
   }
 
   @HandleExceptions({logWithError: "body"})
   public static async reset_password(req: IWorkLenzRequest, res: IWorkLenzResponse) {
+    const featureFlags = FeatureFlagsService.getInstance();
     const {email} = req.body;
 
     // Normalize email to lowercase for case-insensitive comparison
     const normalizedEmail = email ? email.toLowerCase().trim() : null;
 
-    const q = `SELECT id, email, google_id, password FROM users WHERE LOWER(email) = $1;`;
-    const result = await db.query(q, [normalizedEmail]);
-
-    if (!result.rowCount)
-      return res.status(200).send(new ServerResponse(false, null, "Account does not exists!"));
-
-    const [data] = result.rows;
-
-    if (data?.google_id) {
-      return res.status(200).send(new ServerResponse(false, null, "Password reset failed!"));
+    if (!normalizedEmail) {
+      return res.status(200).send(new ServerResponse(false, null, "Email is required!"));
     }
 
-    if (data?.password) {
-      const userIdBase64 = Buffer.from(data.id, "utf8").toString("base64");
+    if (featureFlags.isEnabled('auth')) {
+      // NEW: Prisma implementation via AuthService
+      const authService = new AuthService();
+      const user = await authService.getUserByEmail(normalizedEmail);
 
-      const salt = bcrypt.genSaltSync(10);
-      const hashedUserData = bcrypt.hashSync(data.id + data.email + data.password, salt);
-      const hashedString = hashedUserData.toString().replace(/\//g, "-");
+      if (!user) {
+        return res.status(200).send(new ServerResponse(false, null, "Account does not exists!"));
+      }
 
-      sendResetEmail(email, userIdBase64, hashedString);
-      return res.status(200).send(new ServerResponse(true, null, "Password reset email has been sent to your email. Please check your email."));
+      if (user.google_id) {
+        return res.status(200).send(new ServerResponse(false, null, "Password reset failed!"));
+      }
+
+      if (user.password) {
+        const userIdBase64 = Buffer.from(user.id, "utf8").toString("base64");
+
+        const salt = bcrypt.genSaltSync(10);
+        const hashedUserData = bcrypt.hashSync(user.id + user.email + user.password, salt);
+        const hashedString = hashedUserData.toString().replace(/\//g, "-");
+
+        sendResetEmail(email, userIdBase64, hashedString);
+        return res.status(200).send(new ServerResponse(true, null, "Password reset email has been sent to your email. Please check your email."));
+      }
+
+      return res.status(200).send(new ServerResponse(false, null, "Email not found!"));
+    } else {
+      // OLD: SQL implementation (existing code as fallback)
+      const q = `SELECT id, email, google_id, password FROM users WHERE LOWER(email) = $1;`;
+      const result = await db.query(q, [normalizedEmail]);
+
+      if (!result.rowCount)
+        return res.status(200).send(new ServerResponse(false, null, "Account does not exists!"));
+
+      const [data] = result.rows;
+
+      if (data?.google_id) {
+        return res.status(200).send(new ServerResponse(false, null, "Password reset failed!"));
+      }
+
+      if (data?.password) {
+        const userIdBase64 = Buffer.from(data.id, "utf8").toString("base64");
+
+        const salt = bcrypt.genSaltSync(10);
+        const hashedUserData = bcrypt.hashSync(data.id + data.email + data.password, salt);
+        const hashedString = hashedUserData.toString().replace(/\//g, "-");
+
+        sendResetEmail(email, userIdBase64, hashedString);
+        return res.status(200).send(new ServerResponse(true, null, "Password reset email has been sent to your email. Please check your email."));
+      }
+      return res.status(200).send(new ServerResponse(false, null, "Email not found!"));
     }
-    return res.status(200).send(new ServerResponse(false, null, "Email not found!"));
   }
 
   @HandleExceptions({logWithError: "body"})
   public static async verify_reset_email(req: IWorkLenzRequest, res: IWorkLenzResponse) {
+    const featureFlags = FeatureFlagsService.getInstance();
     const {user, hash, password} = req.body;
     const hashedString = hash.replace(/\-/g, "/");
 
     const userId = Buffer.from(user as string, "base64").toString("ascii");
 
-    const q = `SELECT id, email, google_id, password FROM users WHERE id = $1;`;
-    const result = await db.query(q, [userId || null]);
-    const [data] = result.rows;
+    if (featureFlags.isEnabled('auth')) {
+      // NEW: Prisma implementation via AuthService
+      const authService = new AuthService();
+      const data = await authService.getUserByIdWithPassword(userId);
 
-    const salt = bcrypt.genSaltSync(10);
+      if (!data) {
+        return res.status(200).send(new ServerResponse(false, null, "Invalid Request. Please try again."));
+      }
 
-    if (bcrypt.compareSync(data.id + data.email + data.password, hashedString)) {
-      const encryptedPassword = bcrypt.hashSync(password, salt);
-      const updatePasswordQ = `UPDATE users SET password = $1 WHERE id = $2;`;
-      await db.query(updatePasswordQ, [encryptedPassword, userId || null]);
+      if (bcrypt.compareSync(data.id + data.email + data.password, hashedString)) {
+        await authService.resetPassword(userId, password);
 
-      sendResetSuccessEmail(data.email);
-      return res.status(200).send(new ServerResponse(true, null, "Password updated successfully"));
+        sendResetSuccessEmail(data.email);
+        return res.status(200).send(new ServerResponse(true, null, "Password updated successfully"));
+      }
+      return res.status(200).send(new ServerResponse(false, null, "Invalid Request. Please try again."));
+    } else {
+      // OLD: SQL implementation (existing code as fallback)
+      const q = `SELECT id, email, google_id, password FROM users WHERE id = $1;`;
+      const result = await db.query(q, [userId || null]);
+      const [data] = result.rows;
+
+      if (!data) {
+        return res.status(200).send(new ServerResponse(false, null, "Invalid Request. Please try again."));
+      }
+
+      const salt = bcrypt.genSaltSync(10);
+
+      if (bcrypt.compareSync(data.id + data.email + data.password, hashedString)) {
+        const encryptedPassword = bcrypt.hashSync(password, salt);
+        const updatePasswordQ = `UPDATE users SET password = $1 WHERE id = $2;`;
+        await db.query(updatePasswordQ, [encryptedPassword, userId || null]);
+
+        sendResetSuccessEmail(data.email);
+        return res.status(200).send(new ServerResponse(true, null, "Password updated successfully"));
+      }
+      return res.status(200).send(new ServerResponse(false, null, "Invalid Request. Please try again."));
     }
-    return res.status(200).send(new ServerResponse(false, null, "Invalid Request. Please try again."));
   }
 
   @HandleExceptions({logWithError: "body"})
@@ -262,8 +345,9 @@ export default class AuthController extends WorklenzControllerBase {
 
   @HandleExceptions({logWithError: "body"})
   public static async googleMobileAuth(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse | void> {
+    const featureFlags = FeatureFlagsService.getInstance();
     const {idToken} = req.body;
-    
+
     if (!idToken) {
       return res.status(400).send(new ServerResponse(false, null, "ID token is required"));
     }
@@ -278,14 +362,14 @@ export default class AuthController extends WorklenzControllerBase {
         process.env.GOOGLE_ANDROID_CLIENT_ID, // Android client ID
         process.env.GOOGLE_IOS_CLIENT_ID, // iOS client ID
       ].filter(Boolean); // Remove undefined values
-      
+
       console.log("Token audience (aud):", profile.aud);
       console.log("Allowed client IDs:", allowedClientIds);
       console.log("Environment variables check:");
       console.log("- GOOGLE_CLIENT_ID:", process.env.GOOGLE_CLIENT_ID ? "Set" : "Not set");
       console.log("- GOOGLE_ANDROID_CLIENT_ID:", process.env.GOOGLE_ANDROID_CLIENT_ID ? "Set" : "Not set");
       console.log("- GOOGLE_IOS_CLIENT_ID:", process.env.GOOGLE_IOS_CLIENT_ID ? "Set" : "Not set");
-      
+
       if (!allowedClientIds.includes(profile.aud)) {
         return res.status(400).send(new ServerResponse(false, null, "Invalid token audience"));
       }
@@ -304,34 +388,66 @@ export default class AuthController extends WorklenzControllerBase {
         return res.status(400).send(new ServerResponse(false, null, "Email not verified"));
       }
 
-      // Check for existing local account
       const normalizedProfileEmail = profile.email.toLowerCase().trim();
-      const localAccountResult = await db.query("SELECT 1 FROM users WHERE LOWER(email) = $1 AND password IS NOT NULL AND is_deleted IS FALSE;", [normalizedProfileEmail]);
-      if (localAccountResult.rowCount) {
-        return res.status(400).send(new ServerResponse(false, null, `No Google account exists for email ${profile.email}.`));
-      }
-
-      // Check if user exists
-      const userResult = await db.query(
-        "SELECT id, google_id, name, email, active_team FROM users WHERE google_id = $1 OR LOWER(email) = $2;",
-        [profile.sub, normalizedProfileEmail]
-      );
 
       let user: any;
-      if (userResult.rowCount) {
-        // Existing user - login
-        user = userResult.rows[0];
-      } else {
-        // New user - register
-        const googleUserData = {
-          id: profile.sub,
-          displayName: profile.name,
-          email: normalizedProfileEmail,
-          picture: profile.picture
-        };
 
-        const registerResult = await db.query("SELECT register_google_user($1) AS user;", [JSON.stringify(googleUserData)]);
-        user = registerResult.rows[0].user;
+      if (featureFlags.isEnabled('auth')) {
+        // NEW: Prisma implementation via AuthService
+        const authService = new AuthService();
+
+        // Check for existing local account
+        const hasLocalAccount = await authService.hasLocalAccount(normalizedProfileEmail);
+        if (hasLocalAccount) {
+          return res.status(400).send(new ServerResponse(false, null, `No Google account exists for email ${profile.email}.`));
+        }
+
+        // Check if user exists by Google ID or email
+        const existingUser = await authService.getUserByGoogleIdOrEmail(profile.sub, normalizedProfileEmail);
+
+        if (existingUser) {
+          // Existing user - login
+          user = existingUser;
+        } else {
+          // New user - register (still use stored procedure for complex registration logic)
+          const googleUserData = {
+            id: profile.sub,
+            displayName: profile.name,
+            email: normalizedProfileEmail,
+            picture: profile.picture
+          };
+
+          const registerResult = await db.query("SELECT register_google_user($1) AS user;", [JSON.stringify(googleUserData)]);
+          user = registerResult.rows[0].user;
+        }
+      } else {
+        // OLD: SQL implementation (existing code as fallback)
+        const localAccountResult = await db.query("SELECT 1 FROM users WHERE LOWER(email) = $1 AND password IS NOT NULL AND is_deleted IS FALSE;", [normalizedProfileEmail]);
+        if (localAccountResult.rowCount) {
+          return res.status(400).send(new ServerResponse(false, null, `No Google account exists for email ${profile.email}.`));
+        }
+
+        // Check if user exists
+        const userResult = await db.query(
+          "SELECT id, google_id, name, email, active_team FROM users WHERE google_id = $1 OR LOWER(email) = $2;",
+          [profile.sub, normalizedProfileEmail]
+        );
+
+        if (userResult.rowCount) {
+          // Existing user - login
+          user = userResult.rows[0];
+        } else {
+          // New user - register
+          const googleUserData = {
+            id: profile.sub,
+            displayName: profile.name,
+            email: normalizedProfileEmail,
+            picture: profile.picture
+          };
+
+          const registerResult = await db.query("SELECT register_google_user($1) AS user;", [JSON.stringify(googleUserData)]);
+          user = registerResult.rows[0].user;
+        }
       }
 
       // Create session

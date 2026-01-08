@@ -372,6 +372,248 @@ export class TeamMemberInfoService {
     const result = await prisma.$queryRawUnsafe<any[]>(query, ...params);
     return result.map(row => TeamMemberInfoSchema.parse(row));
   }
+
+  /**
+   * Batch lookup of team members by IDs
+   * Returns a map for O(1) lookup: { teamMemberId: TeamMemberInfo }
+   *
+   * This method is critical for avoiding N+1 query patterns in high-traffic endpoints.
+   * Instead of making N individual queries for each team member, this makes a single
+   * query to fetch all members at once.
+   *
+   * @param teamMemberIds - Array of team member IDs to fetch
+   * @returns Map of team member ID to TeamMemberInfo for O(1) lookup
+   *
+   * @example
+   * // Fetch multiple team members at once
+   * const memberIds = ['uuid1', 'uuid2', 'uuid3'];
+   * const memberMap = await service.getTeamMembersByIds(memberIds);
+   * const member1 = memberMap['uuid1']; // O(1) lookup
+   */
+  async getTeamMembersByIds(teamMemberIds: string[]): Promise<Record<string, TeamMemberInfo>> {
+    if (!teamMemberIds || teamMemberIds.length === 0) {
+      return {};
+    }
+
+    const query = `
+      SELECT
+        avatar_url,
+        email,
+        name,
+        user_id,
+        team_member_id,
+        team_id,
+        active
+      FROM team_member_info_view
+      WHERE team_member_id = ANY($1::uuid[])
+      ORDER BY name NULLS LAST
+    `;
+
+    const result = await prisma.$queryRawUnsafe<any[]>(query, teamMemberIds);
+
+    // Convert array to map for O(1) lookup
+    return result.reduce((acc, row) => {
+      const member = TeamMemberInfoSchema.parse(row);
+      acc[member.team_member_id] = member;
+      return acc;
+    }, {} as Record<string, TeamMemberInfo>);
+  }
+
+  /**
+   * Get all team members for a specific team ID
+   * Optionally filter by active status
+   *
+   * @param teamId - Team ID
+   * @param activeOnly - Only return active members (default: false)
+   * @returns Array of team member info records
+   */
+  async getTeamMembersByTeamId(teamId: string, activeOnly: boolean = false): Promise<TeamMemberInfo[]> {
+    const filters: ITeamMemberInfoFilters = { teamId };
+    if (activeOnly) {
+      filters.active = true;
+    }
+    return this.getTeamMemberInfo(filters);
+  }
+
+  /**
+   * Get team member by user_id and team_id
+   * Useful for looking up a specific user's membership in a team
+   *
+   * @param userId - User ID
+   * @param teamId - Team ID
+   * @returns Team member info or null if not found
+   */
+  async getTeamMemberByUserId(userId: string, teamId: string): Promise<TeamMemberInfo | null> {
+    const results = await this.getTeamMemberInfo({ userId, teamId });
+    return results.length > 0 ? results[0] : null;
+  }
+
+  /**
+   * Get team member details (alias for getTeamMemberById for clarity)
+   *
+   * @param teamMemberId - Team member ID
+   * @returns Team member info or null if not found
+   */
+  async getTeamMemberDetails(teamMemberId: string): Promise<TeamMemberInfo | null> {
+    return this.getTeamMemberById(teamMemberId);
+  }
+
+  /**
+   * Get all team members across all teams owned by a specific owner
+   * Useful for organization-wide queries in admin center
+   *
+   * @param ownerId - Owner user ID
+   * @param activeOnly - Only return active members (default: false)
+   * @returns Array of team member info records
+   */
+  async getAllTeamMembersForOwner(ownerId: string, activeOnly: boolean = false): Promise<TeamMemberInfo[]> {
+    const whereClauses: string[] = [];
+    const params: any[] = [ownerId];
+    let paramIndex = 2;
+
+    if (activeOnly) {
+      whereClauses.push(`active = $${paramIndex}::boolean`);
+      params.push(true);
+      paramIndex++;
+    }
+
+    const whereClause = whereClauses.length > 0 ? `AND ${whereClauses.join(' AND ')}` : '';
+
+    const query = `
+      SELECT
+        avatar_url,
+        email,
+        name,
+        user_id,
+        team_member_id,
+        team_id,
+        active
+      FROM team_member_info_view
+      WHERE team_id IN (
+        SELECT id FROM teams WHERE user_id = $1::uuid
+      )
+      ${whereClause}
+      ORDER BY name NULLS LAST
+    `;
+
+    const result = await prisma.$queryRawUnsafe<any[]>(query, ...params);
+    return result.map(row => TeamMemberInfoSchema.parse(row));
+  }
+
+  /**
+   * Get team members for a specific project
+   * Joins through project_members to find team members assigned to a project
+   *
+   * @param projectId - Project ID
+   * @returns Array of team member info records
+   */
+  async getTeamMembersByProjectId(projectId: string): Promise<TeamMemberInfo[]> {
+    const query = `
+      SELECT DISTINCT
+        tmiv.avatar_url,
+        tmiv.email,
+        tmiv.name,
+        tmiv.user_id,
+        tmiv.team_member_id,
+        tmiv.team_id,
+        tmiv.active
+      FROM team_member_info_view tmiv
+      INNER JOIN project_members pm ON tmiv.team_member_id = pm.team_member_id
+      WHERE pm.project_id = $1::uuid
+      ORDER BY tmiv.name NULLS LAST
+    `;
+
+    const result = await prisma.$queryRawUnsafe<any[]>(query, projectId);
+    return result.map(row => TeamMemberInfoSchema.parse(row));
+  }
+
+  /**
+   * Get all team members for teams owned by a specific owner
+   * Alias for getAllTeamMembersForOwner for backward compatibility
+   *
+   * @param ownerId - Owner user ID
+   * @param activeOnly - Only return active members (default: false)
+   * @returns Array of team member info records
+   */
+  async getOwnerTeamMembers(ownerId: string, activeOnly: boolean = false): Promise<TeamMemberInfo[]> {
+    return this.getAllTeamMembersForOwner(ownerId, activeOnly);
+  }
+
+  /**
+   * Get team members with a specific role
+   *
+   * @param teamId - Team ID
+   * @param roleId - Role ID
+   * @returns Array of team member info records
+   */
+  async getTeamMembersByRole(teamId: string, roleId: string): Promise<TeamMemberInfo[]> {
+    const query = `
+      SELECT
+        tmiv.avatar_url,
+        tmiv.email,
+        tmiv.name,
+        tmiv.user_id,
+        tmiv.team_member_id,
+        tmiv.team_id,
+        tmiv.active
+      FROM team_member_info_view tmiv
+      INNER JOIN team_members tm ON tmiv.team_member_id = tm.id
+      WHERE tmiv.team_id = $1::uuid
+        AND tm.role_id = $2::uuid
+      ORDER BY tmiv.name NULLS LAST
+    `;
+
+    const result = await prisma.$queryRawUnsafe<any[]>(query, teamId, roleId);
+    return result.map(row => TeamMemberInfoSchema.parse(row));
+  }
+
+  /**
+   * Get pending invitations for a team
+   * Returns team members who have been invited but haven't accepted yet
+   *
+   * @param teamId - Team ID
+   * @returns Array of team member info records with pending invitations
+   */
+  async getPendingInvitations(teamId: string): Promise<TeamMemberInfo[]> {
+    const query = `
+      SELECT
+        tmiv.avatar_url,
+        tmiv.email,
+        tmiv.name,
+        tmiv.user_id,
+        tmiv.team_member_id,
+        tmiv.team_id,
+        tmiv.active
+      FROM team_member_info_view tmiv
+      WHERE tmiv.team_id = $1::uuid
+        AND tmiv.user_id IS NULL
+      ORDER BY tmiv.email
+    `;
+
+    const result = await prisma.$queryRawUnsafe<any[]>(query, teamId);
+    return result.map(row => TeamMemberInfoSchema.parse(row));
+  }
+
+  /**
+   * Get all team members including those with pending invitations
+   *
+   * @param teamId - Team ID
+   * @returns Array of team member info records
+   */
+  async getTeamMembersWithPendingInvites(teamId: string): Promise<TeamMemberInfo[]> {
+    return this.getTeamMembersByTeamId(teamId, false);
+  }
+
+  /**
+   * Check if a team member is active
+   *
+   * @param teamMemberId - Team member ID
+   * @returns true if team member is active
+   */
+  async checkTeamMemberActive(teamMemberId: string): Promise<boolean> {
+    const member = await this.getTeamMemberById(teamMemberId);
+    return member?.active || false;
+  }
 }
 
 /**

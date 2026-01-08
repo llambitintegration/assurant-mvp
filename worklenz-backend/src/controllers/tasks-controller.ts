@@ -21,6 +21,8 @@ import TasksControllerBase from "./tasks-controller-base";
 import { insertToActivityLogs } from "../services/activity-logs/activity-logs.service";
 import { IActivityLog } from "../services/activity-logs/interfaces";
 import { getKey, getRootDir, uploadBase64 } from "../shared/s3";
+import { teamMemberInfoService } from "../services/views/team-member-info.service";
+import { getFeatureFlags } from "../services/feature-flags/feature-flags.service";
 
 export default class TasksController extends TasksControllerBase {
   private static notifyProjectUpdates(socketId: string, projectId: string) {
@@ -639,6 +641,38 @@ export default class TasksController extends TasksControllerBase {
 
   @HandleExceptions()
   public static async getProjectTaskAssignees(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
+    const featureFlags = getFeatureFlags();
+
+    if (featureFlags.isEnabled('teams')) {
+      // NEW: Use TeamMemberInfoService
+      const qProjectMembers = `
+        SELECT DISTINCT project_members.team_member_id AS team_member_id
+        FROM project_members
+        WHERE project_id = $1
+          AND EXISTS(SELECT 1 FROM tasks_assignees WHERE project_member_id = project_members.id);
+      `;
+      const pmResult = await db.query(qProjectMembers, [req.params.id]);
+
+      const assignees = [];
+
+      for (const pm of pmResult.rows) {
+        const memberInfo = await teamMemberInfoService.getTeamMemberById(pm.team_member_id);
+
+        if (memberInfo) {
+          assignees.push({
+            id: memberInfo.team_member_id,
+            name: memberInfo.name,
+            email: memberInfo.email,
+            avatar_url: memberInfo.avatar_url,
+            color_code: getColor(memberInfo.name || '')
+          });
+        }
+      }
+
+      return res.status(200).send(new ServerResponse(true, assignees));
+    }
+
+    // LEGACY: Use direct SQL query
     const q = `
       SELECT project_members.team_member_id AS id,
              tmiv.name,

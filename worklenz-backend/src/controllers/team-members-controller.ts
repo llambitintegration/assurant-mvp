@@ -17,36 +17,57 @@ import { statusExclude, TEAM_MEMBER_TREE_MAP_COLOR_ALPHA, TRIAL_MEMBER_LIMIT } f
 import { checkTeamSubscriptionStatus } from "../shared/paddle-utils";
 import { updateUsers } from "../shared/paddle-requests";
 import { NotificationsService } from "../services/notifications/notifications.service";
+import { teamMemberInfoService } from "../services/views/team-member-info.service";
+import { getFeatureFlags } from "../services/feature-flags/feature-flags.service";
+import prisma from "../config/prisma";
 
 export default class TeamMembersController extends WorklenzControllerBase {
 
   public static async checkIfUserAlreadyExists(owner_id: string, email: string) {
     if (!owner_id) throw new Error("Owner not found.");
 
-    const q = `SELECT EXISTS(SELECT tmi.team_member_id
-              FROM team_member_info_view AS tmi
-                       JOIN teams AS t ON tmi.team_id = t.id
-              WHERE tmi.email = $1::TEXT
-                AND t.user_id = $2::UUID);`;
-    const result = await db.query(q, [email, owner_id]);
+    const featureFlags = getFeatureFlags();
 
-    const [data] = result.rows;
-    return data.exists;
+    if (featureFlags.isEnabled('teams', 'read')) {
+      // NEW: Use TeamMemberInfoService
+      const members = await teamMemberInfoService.getAllTeamMembersForOwner(owner_id, false);
+      const exists = members.some(m => m.email?.toLowerCase().trim() === email.toLowerCase().trim());
+      return exists;
+    } else {
+      // LEGACY: SQL implementation
+      const q = `SELECT EXISTS(SELECT tmi.team_member_id
+                FROM team_member_info_view AS tmi
+                         JOIN teams AS t ON tmi.team_id = t.id
+                WHERE tmi.email = $1::TEXT
+                  AND t.user_id = $2::UUID);`;
+      const result = await db.query(q, [email, owner_id]);
+
+      const [data] = result.rows;
+      return data.exists;
+    }
   }
 
   public static async checkIfUserActiveInOtherTeams(owner_id: string, email: string) {
     if (!owner_id) throw new Error("Owner not found.");
 
-    const q = `SELECT EXISTS(SELECT tmi.team_member_id
-              FROM team_member_info_view AS tmi
-                       JOIN teams AS t ON tmi.team_id = t.id
-                       JOIN team_members AS tm ON tmi.team_member_id = tm.id
-              WHERE tmi.email = $1::TEXT
-              AND t.user_id = $2::UUID AND tm.active = true);`;
-    const result = await db.query(q, [email, owner_id]);
+    const featureFlags = getFeatureFlags();
 
-    const [data] = result.rows;
-    return data.exists;
+    if (featureFlags.isEnabled('teams', 'read')) {
+      // NEW: Use TeamMemberInfoService with active filter
+      return await teamMemberInfoService.checkUserActiveInOwnerTeams(owner_id, email);
+    } else {
+      // LEGACY: SQL implementation
+      const q = `SELECT EXISTS(SELECT tmi.team_member_id
+                FROM team_member_info_view AS tmi
+                         JOIN teams AS t ON tmi.team_id = t.id
+                         JOIN team_members AS tm ON tmi.team_member_id = tm.id
+                WHERE tmi.email = $1::TEXT
+                AND t.user_id = $2::UUID AND tm.active = true);`;
+      const result = await db.query(q, [email, owner_id]);
+
+      const [data] = result.rows;
+      return data.exists;
+    }
   }
 
   public static async createOrInviteMembers<T>(body: T, user: IPassportSession): Promise<Array<{
@@ -220,52 +241,179 @@ export default class TeamMembersController extends WorklenzControllerBase {
 
     const paginate = req.query.all === "false" ? `LIMIT ${size} OFFSET ${offset}` : "";
 
-    const q = `
-      SELECT COUNT(*) AS total,
-             (SELECT COALESCE(ARRAY_TO_JSON(ARRAY_AGG(ROW_TO_JSON(t))), '[]'::JSON)
-              FROM (SELECT team_members.id,
-                           (SELECT name
-                            FROM team_member_info_view
-                            WHERE team_member_info_view.team_member_id = team_members.id),
-                           u.avatar_url,
-                           (u.socket_id IS NOT NULL) AS is_online,
-                           (SELECT COUNT(*)
-                            FROM project_members
-                            WHERE team_member_id = team_members.id) AS projects_count,
-                           (SELECT name FROM job_titles WHERE id = team_members.job_title_id) AS job_title,
-                           (SELECT name FROM roles WHERE id = team_members.role_id) AS role_name,
-                           EXISTS(SELECT id
-                                  FROM roles
-                                  WHERE id = team_members.role_id
-                                    AND admin_role IS TRUE) AS is_admin,
-                           (CASE
-                              WHEN user_id = (SELECT user_id FROM teams WHERE id = $1) THEN TRUE
-                              ELSE FALSE END) AS is_owner,
-                           (SELECT email
-                            FROM team_member_info_view
-                            WHERE team_member_info_view.team_member_id = team_members.id) AS email,
-                           EXISTS(SELECT email
-                                  FROM email_invitations
-                                  WHERE team_member_id = team_members.id
-                                    AND email_invitations.team_id = team_members.team_id) AS pending_invitation,
-                            active
-                    FROM team_members
-                           LEFT JOIN users u ON team_members.user_id = u.id
-                    WHERE ${searchQuery} team_id = $1
-                    ORDER BY ${sortField} ${sortOrder} ${paginate}) t) AS data
-      FROM team_members
-             LEFT JOIN users u ON team_members.user_id = u.id
-      WHERE ${searchQuery} team_id = $1
-    `;
-    const result = await db.query(q, [req.user?.team_id || null]);
-    const [members] = result.rows;
+    const featureFlags = getFeatureFlags();
 
-    members.data?.map((a: any) => {
-      a.color_code = getColor(a.name);
-      return a;
-    });
+    if (featureFlags.isEnabled('teams', 'read')) {
+      // NEW: Prisma + Batch enrichment approach
+      const teamId = req.user?.team_id || null;
 
-    return res.status(200).send(new ServerResponse(true, members || this.paginatedDatasetDefaultStruct));
+      if (!teamId) {
+        return res.status(200).send(new ServerResponse(true, this.paginatedDatasetDefaultStruct));
+      }
+
+      // Step 1: Build WHERE conditions for Prisma query
+      const whereConditions: any = { team_id: teamId };
+
+      // Handle search query if present
+      if (req.query.search && typeof req.query.search === 'string') {
+        const searchTerm = req.query.search.trim();
+        if (searchTerm) {
+          whereConditions.OR = [
+            { users: { name: { contains: searchTerm, mode: 'insensitive' } } },
+            { users: { email: { contains: searchTerm, mode: 'insensitive' } } }
+          ];
+        }
+      }
+
+      // Step 2: Get total count
+      const total = await prisma.team_members.count({ where: whereConditions });
+
+      // Step 3: Get team owner ID for is_owner calculation
+      const team = await prisma.teams.findUnique({
+        where: { id: teamId },
+        select: { user_id: true }
+      });
+      const ownerId = team?.user_id;
+
+      // Step 4: Fetch base team_members data with relations
+      const prismaSort: any = {};
+      if (sortField.includes('u.name') || sortField.includes('name')) {
+        prismaSort.users = { name: sortOrder === 'ASC' ? 'asc' : 'desc' };
+      } else if (sortField.includes('is_owner')) {
+        prismaSort.user_id = sortOrder === 'ASC' ? 'asc' : 'desc'; // Owner has user_id = ownerId
+      } else if (sortField.includes('active')) {
+        prismaSort.active = sortOrder === 'ASC' ? 'asc' : 'desc';
+      } else {
+        prismaSort.created_at = 'desc'; // Default sort
+      }
+
+      const skip = req.query.all === "false" ? offset : undefined;
+      const take = req.query.all === "false" ? size : undefined;
+
+      const members = await prisma.team_members.findMany({
+        where: whereConditions,
+        orderBy: prismaSort,
+        skip,
+        take,
+        include: {
+          users: {
+            select: {
+              avatar_url: true,
+              socket_id: true
+            }
+          },
+          job_titles: {
+            select: {
+              name: true
+            }
+          },
+          roles: {
+            select: {
+              name: true,
+              admin_role: true
+            }
+          }
+        }
+      });
+
+      // Step 5: Batch enrich with member info using getTeamMembersByIds (avoids N+1!)
+      const memberIds = members.map(m => m.id);
+      const memberInfoMap = await teamMemberInfoService.getTeamMembersByIds(memberIds);
+
+      // Step 6: Get projects_count for each member (batch query)
+      const projectCounts = await prisma.project_members.groupBy({
+        by: ['team_member_id'],
+        where: { team_member_id: { in: memberIds } },
+        _count: { id: true }
+      });
+      const projectCountMap = projectCounts.reduce((acc, pc) => {
+        acc[pc.team_member_id] = pc._count.id;
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Step 7: Check for pending invitations (batch query)
+      const pendingInvites = await prisma.email_invitations.findMany({
+        where: {
+          team_member_id: { in: memberIds },
+          team_id: teamId
+        },
+        select: { team_member_id: true }
+      });
+      const pendingInviteSet = new Set(pendingInvites.map(pi => pi.team_member_id));
+
+      // Step 8: Merge data
+      const enrichedData = members.map(m => {
+        const info = memberInfoMap[m.id];
+        return {
+          id: m.id,
+          name: info?.name || null,
+          avatar_url: m.users?.avatar_url || null,
+          is_online: m.users?.socket_id != null,
+          projects_count: projectCountMap[m.id] || 0,
+          job_title: m.job_titles?.name || null,
+          role_name: m.roles?.name || null,
+          is_admin: m.roles?.admin_role || false,
+          is_owner: m.user_id === ownerId,
+          email: info?.email || null,
+          pending_invitation: pendingInviteSet.has(m.id),
+          active: m.active,
+          color_code: getColor(info?.name)
+        };
+      });
+
+      return res.status(200).send(new ServerResponse(true, {
+        total,
+        data: enrichedData
+      }));
+    } else {
+      // LEGACY: SQL implementation
+      const q = `
+        SELECT COUNT(*) AS total,
+               (SELECT COALESCE(ARRAY_TO_JSON(ARRAY_AGG(ROW_TO_JSON(t))), '[]'::JSON)
+                FROM (SELECT team_members.id,
+                             (SELECT name
+                              FROM team_member_info_view
+                              WHERE team_member_info_view.team_member_id = team_members.id),
+                             u.avatar_url,
+                             (u.socket_id IS NOT NULL) AS is_online,
+                             (SELECT COUNT(*)
+                              FROM project_members
+                              WHERE team_member_id = team_members.id) AS projects_count,
+                             (SELECT name FROM job_titles WHERE id = team_members.job_title_id) AS job_title,
+                             (SELECT name FROM roles WHERE id = team_members.role_id) AS role_name,
+                             EXISTS(SELECT id
+                                    FROM roles
+                                    WHERE id = team_members.role_id
+                                      AND admin_role IS TRUE) AS is_admin,
+                             (CASE
+                                WHEN user_id = (SELECT user_id FROM teams WHERE id = $1) THEN TRUE
+                                ELSE FALSE END) AS is_owner,
+                             (SELECT email
+                              FROM team_member_info_view
+                              WHERE team_member_info_view.team_member_id = team_members.id) AS email,
+                             EXISTS(SELECT email
+                                    FROM email_invitations
+                                    WHERE team_member_id = team_members.id
+                                      AND email_invitations.team_id = team_members.team_id) AS pending_invitation,
+                              active
+                      FROM team_members
+                             LEFT JOIN users u ON team_members.user_id = u.id
+                      WHERE ${searchQuery} team_id = $1
+                      ORDER BY ${sortField} ${sortOrder} ${paginate}) t) AS data
+        FROM team_members
+               LEFT JOIN users u ON team_members.user_id = u.id
+        WHERE ${searchQuery} team_id = $1
+      `;
+      const result = await db.query(q, [req.user?.team_id || null]);
+      const [members] = result.rows;
+
+      members.data?.map((a: any) => {
+        a.color_code = getColor(a.name);
+        return a;
+      });
+
+      return res.status(200).send(new ServerResponse(true, members || this.paginatedDatasetDefaultStruct));
+    }
   }
 
   @HandleExceptions()
@@ -286,57 +434,167 @@ export default class TeamMembersController extends WorklenzControllerBase {
 
   @HandleExceptions()
   public static async getById(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const q = `
-      SELECT id,
-             created_at,
-             updated_at,
-             (SELECT name FROM team_member_info_view WHERE team_member_info_view.team_member_id = team_members.id),
-             (SELECT avatar_url FROM users WHERE id = team_members.user_id),
-             EXISTS(SELECT email
-                    FROM email_invitations
-                    WHERE team_member_id = team_members.id
-                      AND email_invitations.team_id = team_members.team_id) AS pending_invitation,
-             (SELECT name FROM job_titles WHERE id = team_members.job_title_id) AS job_title,
-             COALESCE(
-               (SELECT email FROM users WHERE id = team_members.user_id),
-               (SELECT email
-                FROM email_invitations
-                WHERE email_invitations.team_member_id = team_members.id
-                  AND email_invitations.team_id = team_members.team_id
-                LIMIT 1)
-               ) AS email,
-             EXISTS(SELECT id FROM roles WHERE id = team_members.role_id AND admin_role IS TRUE) AS is_admin
-      FROM team_members
-      WHERE id = $1
-        AND team_id = $2;
-    `;
-    const result = await db.query(q, [req.params.id, req.user?.team_id || null]);
-    const [data] = result.rows;
-    return res.status(200).send(new ServerResponse(true, data));
+    const featureFlags = getFeatureFlags();
+
+    if (featureFlags.isEnabled('teams', 'read')) {
+      // NEW: Prisma + Service enrichment
+      const member = await prisma.team_members.findFirst({
+        where: {
+          id: req.params.id,
+          team_id: req.user?.team_id || undefined
+        },
+        include: {
+          users: {
+            select: {
+              avatar_url: true,
+              email: true
+            }
+          },
+          job_titles: {
+            select: {
+              name: true
+            }
+          },
+          roles: {
+            select: {
+              admin_role: true
+            }
+          }
+        }
+      });
+
+      if (!member) {
+        return res.status(200).send(new ServerResponse(false, null, "Team member not found"));
+      }
+
+      // Get member info from view (for name if from invitation)
+      const memberInfo = await teamMemberInfoService.getTeamMemberById(member.id);
+
+      // Check for pending invitation
+      const pendingInvite = await prisma.email_invitations.findFirst({
+        where: {
+          team_member_id: member.id,
+          team_id: member.team_id
+        },
+        select: {
+          email: true
+        }
+      });
+
+      const data = {
+        id: member.id,
+        created_at: member.created_at,
+        updated_at: member.updated_at,
+        name: memberInfo?.name || null,
+        avatar_url: member.users?.avatar_url || null,
+        pending_invitation: !!pendingInvite,
+        job_title: member.job_titles?.name || null,
+        email: member.users?.email || pendingInvite?.email || null,
+        is_admin: member.roles?.admin_role || false
+      };
+
+      return res.status(200).send(new ServerResponse(true, data));
+    } else {
+      // LEGACY: SQL implementation
+      const q = `
+        SELECT id,
+               created_at,
+               updated_at,
+               (SELECT name FROM team_member_info_view WHERE team_member_info_view.team_member_id = team_members.id),
+               (SELECT avatar_url FROM users WHERE id = team_members.user_id),
+               EXISTS(SELECT email
+                      FROM email_invitations
+                      WHERE team_member_id = team_members.id
+                        AND email_invitations.team_id = team_members.team_id) AS pending_invitation,
+               (SELECT name FROM job_titles WHERE id = team_members.job_title_id) AS job_title,
+               COALESCE(
+                 (SELECT email FROM users WHERE id = team_members.user_id),
+                 (SELECT email
+                  FROM email_invitations
+                  WHERE email_invitations.team_member_id = team_members.id
+                    AND email_invitations.team_id = team_members.team_id
+                  LIMIT 1)
+                 ) AS email,
+               EXISTS(SELECT id FROM roles WHERE id = team_members.role_id AND admin_role IS TRUE) AS is_admin
+        FROM team_members
+        WHERE id = $1
+          AND team_id = $2;
+      `;
+      const result = await db.query(q, [req.params.id, req.user?.team_id || null]);
+      const [data] = result.rows;
+      return res.status(200).send(new ServerResponse(true, data));
+    }
   }
 
   @HandleExceptions()
   public static async getTeamMembersByProject(req: IWorkLenzRequest, res: IWorkLenzResponse): Promise<IWorkLenzResponse> {
-    const q = `
-      SELECT project_members.id,
-             team_member_id,
-             project_access_level_id,
-             (SELECT name
-              FROM project_access_levels
-              WHERE id = project_access_level_id) AS project_access_level_name,
-             (SELECT name FROM team_member_info_view WHERE team_member_info_view.team_member_id = tm.id),
-             u.avatar_url,
-             (SELECT team_member_info_view.email
-              FROM team_member_info_view
-              WHERE team_member_info_view.team_member_id = tm.id)
-      FROM project_members
-             INNER JOIN team_members tm ON project_members.team_member_id = tm.id
-             LEFT JOIN users u ON tm.user_id = u.id
-      WHERE project_id = $1
-      ORDER BY project_members.created_at DESC;
-    `;
-    const result = await db.query(q, [req.params.id]);
-    return res.status(200).send(new ServerResponse(true, result.rows));
+    const featureFlags = getFeatureFlags();
+
+    if (featureFlags.isEnabled('teams', 'read')) {
+      // NEW: Prisma + Batch service enrichment
+      const projectMembers = await prisma.project_members.findMany({
+        where: {
+          project_id: req.params.id
+        },
+        include: {
+          project_access_levels: {
+            select: {
+              name: true
+            }
+          },
+          team_members: {
+            include: {
+              users: {
+                select: {
+                  avatar_url: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          created_at: 'desc'
+        }
+      });
+
+      // Batch enrich with member info
+      const teamMemberIds = projectMembers.map(pm => pm.team_member_id);
+      const memberInfoMap = await teamMemberInfoService.getTeamMembersByIds(teamMemberIds);
+
+      const enrichedData = projectMembers.map(pm => ({
+        id: pm.id,
+        team_member_id: pm.team_member_id,
+        project_access_level_id: pm.project_access_level_id,
+        project_access_level_name: pm.project_access_levels?.name || null,
+        name: memberInfoMap[pm.team_member_id]?.name || null,
+        avatar_url: pm.team_members?.users?.avatar_url || null,
+        email: memberInfoMap[pm.team_member_id]?.email || null
+      }));
+
+      return res.status(200).send(new ServerResponse(true, enrichedData));
+    } else {
+      // LEGACY: SQL implementation
+      const q = `
+        SELECT project_members.id,
+               team_member_id,
+               project_access_level_id,
+               (SELECT name
+                FROM project_access_levels
+                WHERE id = project_access_level_id) AS project_access_level_name,
+               (SELECT name FROM team_member_info_view WHERE team_member_info_view.team_member_id = tm.id),
+               u.avatar_url,
+               (SELECT team_member_info_view.email
+                FROM team_member_info_view
+                WHERE team_member_info_view.team_member_id = tm.id)
+        FROM project_members
+               INNER JOIN team_members tm ON project_members.team_member_id = tm.id
+               LEFT JOIN users u ON tm.user_id = u.id
+        WHERE project_id = $1
+        ORDER BY project_members.created_at DESC;
+      `;
+      const result = await db.query(q, [req.params.id]);
+      return res.status(200).send(new ServerResponse(true, result.rows));
+    }
   }
 
   @HandleExceptions()
